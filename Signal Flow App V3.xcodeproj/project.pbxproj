@@ -43,14 +43,6 @@
 		5190CFC72F72BC8400D14744 /* Signal Flow App V3.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Signal Flow App V3.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		5190CFC92F72BC8400D14744 /* Signal Flow App V3 */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Signal Flow App V3";
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
-
 /* Begin PBXFrameworksBuildPhase section */
 		5190CFC42F72BC8400D14744 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -87,13 +79,20 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		5131C8A12F72F77900C5E043 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				5131C8832F72F20200C5E043 /* Component.swift */,
+				5131C8852F72F20200C5E043 /* Exercise.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
 		5190CFBE2F72BC8400D14744 = {
 			isa = PBXGroup;
 			children = (
-				5190CFC92F72BC8400D14744 /* Signal Flow App V3 */,
 				5190CFC82F72BC8400D14744 /* Products */,
-				5131C8832F72F20200C5E043 /* Component.swift */,
-				5131C8852F72F20200C5E043 /* Exercise.swift */,
+				5131C8A12F72F77900C5E043 /* Models */,
 				5131C89F2F72F6DD00C5E043 /* Data */,
 				5131C8A02F72F6F500C5E043 /* Views */,
 				5131C8942F72F23700C5E043 /* AppState.swift */,
@@ -123,9 +122,6 @@
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				5190CFC92F72BC8400D14744 /* Signal Flow App V3 */,
 			);
 			name = "Signal Flow App V3";
 			packageProductDependencies = (

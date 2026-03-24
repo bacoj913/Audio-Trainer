@@ -258,3 +258,339 @@ func rfPickN<T>(_ arr: [T], _ n: Int) -> [T] {
     return out
 }
 func rfRand(_ lo: Int, _ hi: Int) -> Int { Int.random(in: lo...hi) }
+
+
+#if DEBUG
+import SwiftUI
+
+// MARK: - Preview Helpers
+
+private struct RFSectionHeader: View {
+    let title: String
+    let count: Int
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.headline)
+            Spacer()
+            Text("\(count)")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct RFVenueCard: View {
+    let venue: RFVenue
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(venue.name)
+                        .font(.headline)
+
+                    Text("\(venue.type) • \(venue.city)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text(venue.rfEnv.rawValue)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(envColor.opacity(0.15))
+                    .foregroundStyle(envColor)
+                    .clipShape(Capsule())
+            }
+
+            HStack(spacing: 12) {
+                Label("Cap. \(venue.capacity)", systemImage: "person.3")
+                Label(venue.region, systemImage: "globe")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            Text(venue.notes)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(width: 430, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(NSColor.windowBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    private var envColor: Color {
+        switch venue.rfEnv {
+        case .low: .green
+        case .moderate: .yellow
+        case .busy: .orange
+        case .veryBusy: .red
+        }
+    }
+}
+
+private struct RFWirelessSystemCard: View {
+    let system: RFWirelessSystem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(system.system)
+                        .font(.headline)
+
+                    Text(system.brand)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text(system.key)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Frequency Bands")
+                    .font(.subheadline.weight(.semibold))
+
+                ForEach(Array(system.freqBands.keys.sorted()), id: \.self) { region in
+                    let bands = system.freqBands[region] ?? []
+                    Text("\(region): " + bands.map { "\($0.band) (\($0.range))" }.joined(separator: ", "))
+                        .font(.caption)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Receivers")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(Array(system.receivers.enumerated()), id: \.offset) { _, rx in
+                    Text("• \(rx.name) — \(rx.channels) ch")
+                        .font(.caption)
+                }
+            }
+
+            if !system.handhelds.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Handhelds")
+                        .font(.subheadline.weight(.semibold))
+                    ForEach(Array(system.handhelds.enumerated()), id: \.offset) { _, item in
+                        Text("• \(item.name)")
+                            .font(.caption)
+                    }
+                }
+            }
+
+            if !system.bodypacks.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bodypacks")
+                        .font(.subheadline.weight(.semibold))
+                    ForEach(Array(system.bodypacks.enumerated()), id: \.offset) { _, item in
+                        Text("• \(item.name)")
+                            .font(.caption)
+                    }
+                }
+            }
+
+            if let iemTx = system.iemTx, !iemTx.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("IEM Transmitters")
+                        .font(.subheadline.weight(.semibold))
+                    ForEach(Array(iemTx.enumerated()), id: \.offset) { _, item in
+                        Text("• \(item.name)")
+                            .font(.caption)
+                    }
+                }
+            }
+
+            if let iemRx = system.iemRx, !iemRx.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("IEM Receivers")
+                        .font(.subheadline.weight(.semibold))
+                    ForEach(Array(iemRx.enumerated()), id: \.offset) { _, item in
+                        Text("• \(item.name)")
+                            .font(.caption)
+                    }
+                }
+            }
+
+            Text("Coordination: \(system.coord)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(width: 460, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(NSColor.windowBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+    }
+}
+
+private struct RFListCard: View {
+    let title: String
+    let items: [RFListItem]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RFSectionHeader(title: title, count: items.count)
+
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                HStack {
+                    Text(item.name)
+                        .font(.caption)
+                    Spacer()
+                    Text(item.cat)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding()
+        .frame(width: 420, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(NSColor.windowBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+    }
+}
+
+private struct RFDataSummaryView: View {
+    private var venueCountsByEnv: [(RFEnvironment, Int)] {
+        RFEnvironment.allCases.map { env in
+            (env, rfVenues.filter { $0.rfEnv == env }.count)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("RF Planner Data Summary")
+                .font(.headline)
+
+            Text("Venues: \(rfVenues.count)")
+            Text("Wireless Systems: \(rfWirelessSystems.count)")
+            Text("Antennas: \(rfAntennas.count)")
+            Text("Distros: \(rfDistros.count)")
+            Text("Accessories: \(rfAccessories.count)")
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            Text("Venue RF Environment Counts")
+                .font(.subheadline.weight(.semibold))
+
+            ForEach(venueCountsByEnv, id: \.0) { env, count in
+                HStack {
+                    Circle()
+                        .fill(color(for: env))
+                        .frame(width: 12, height: 12)
+
+                    Text(env.rawValue)
+                    Spacer()
+                    Text("\(count)")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.caption)
+            }
+        }
+        .padding()
+        .frame(width: 280, alignment: .leading)
+    }
+
+    private func color(for env: RFEnvironment) -> Color {
+        switch env {
+        case .low: .green
+        case .moderate: .yellow
+        case .busy: .orange
+        case .veryBusy: .red
+        }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("RF Summary") {
+    RFDataSummaryView()
+}
+
+#Preview("Venues") {
+    ScrollView {
+        VStack(alignment: .leading, spacing: 14) {
+            RFSectionHeader(title: "Venues", count: rfVenues.count)
+            ForEach(Array(rfVenues.prefix(4).enumerated()), id: \.offset) { _, venue in
+                RFVenueCard(venue: venue)
+            }
+        }
+        .padding()
+    }
+    .frame(width: 480, height: 760)
+}
+
+#Preview("Wireless Systems") {
+    ScrollView {
+        VStack(alignment: .leading, spacing: 14) {
+            RFSectionHeader(title: "Wireless Systems", count: rfWirelessSystems.count)
+            ForEach(Array(rfWirelessSystems.prefix(3).enumerated()), id: \.offset) { _, system in
+                RFWirelessSystemCard(system: system)
+            }
+        }
+        .padding()
+    }
+    .frame(width: 520, height: 760)
+}
+
+#Preview("RF Lists") {
+    ScrollView {
+        VStack(alignment: .leading, spacing: 14) {
+            RFListCard(title: "Antennas", items: rfAntennas)
+            RFListCard(title: "Distros", items: rfDistros)
+            RFListCard(title: "Accessories", items: rfAccessories)
+        }
+        .padding()
+    }
+    .frame(width: 460, height: 760)
+}
+
+#Preview("RF Data Browser") {
+    ScrollView {
+        VStack(alignment: .leading, spacing: 18) {
+            RFDataSummaryView()
+
+            RFSectionHeader(title: "Featured Venue", count: 1)
+            if let venue = rfVenues.first {
+                RFVenueCard(venue: venue)
+            }
+
+            RFSectionHeader(title: "Featured Wireless System", count: 1)
+            if let system = rfWirelessSystems.first {
+                RFWirelessSystemCard(system: system)
+            }
+
+            RFListCard(title: "Antennas", items: Array(rfAntennas.prefix(4)))
+            RFListCard(title: "Distros", items: Array(rfDistros.prefix(4)))
+        }
+        .padding()
+    }
+    .frame(width: 540, height: 860)
+}
+#endif

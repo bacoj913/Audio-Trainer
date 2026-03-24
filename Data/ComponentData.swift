@@ -584,3 +584,212 @@ enum Components {
             desc: "Active 4-way antenna distributor with DC bias", level: "RF Distribution"),
     ]
 }
+#if DEBUG
+import SwiftUI
+
+// MARK: - Preview Helpers
+
+private struct ComponentLibrarySummaryView: View {
+    private var categoryCounts: [(String, Int)] {
+        Dictionary(grouping: Components.list, by: { $0.category })
+            .map { ($0.key, $0.value.count) }
+            .sorted { lhs, rhs in
+                if let l = categoryOrder.firstIndex(of: lhs.0),
+                   let r = categoryOrder.firstIndex(of: rhs.0) {
+                    return l < r
+                }
+                return lhs.0 < rhs.0
+            }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Component Library Summary")
+                .font(.headline)
+
+            Text("Total Components: \(Components.list.count)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            ForEach(categoryCounts, id: \.0) { category, count in
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.categoryColor(category))
+                        .frame(width: 18, height: 18)
+
+                    Text(category)
+                        .font(.system(size: 13, weight: .medium))
+
+                    Spacer()
+
+                    Text("\(count)")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding()
+        .frame(width: 320, alignment: .leading)
+    }
+}
+
+private struct ComponentLibraryCard: View {
+    let component: Component
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.categoryColor(component.category))
+                    .frame(width: 10, height: 44)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(component.name)
+                        .font(.headline)
+
+                    Text("\(component.manufacturer) • \(component.model)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+
+            HStack(spacing: 8) {
+                Text(component.category)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.categoryColor(component.category).opacity(0.15))
+                    .clipShape(Capsule())
+
+                if component.isRack {
+                    Text("\(component.rackUnits)U Rack")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.secondary.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+
+                if component.comingSoon {
+                    Text("Coming Soon")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.16))
+                        .clipShape(Capsule())
+                }
+            }
+
+            Group {
+                Text("Signal Inputs: \(component.inputs.isEmpty ? "None" : component.inputs.joined(separator: ", "))")
+                Text("Signal Outputs: \(component.outputs.isEmpty ? "None" : component.outputs.joined(separator: ", "))")
+                Text("Physical Inputs: \(component.ports.inputs.isEmpty ? "None" : component.ports.inputs.joined(separator: ", "))")
+                Text("Physical Outputs: \(component.ports.outputs.isEmpty ? "None" : component.ports.outputs.joined(separator: ", "))")
+                Text("Level: \(component.level.isEmpty ? "None" : component.level)")
+            }
+            .font(.caption)
+
+            Text(component.desc)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(width: 420, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(NSColor.windowBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+        .padding()
+    }
+}
+
+private struct ComponentLibraryListPreview: View {
+    let title: String
+    let components: [Component]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(title)
+                    .font(.headline)
+                    .padding(.horizontal)
+
+                ForEach(Array(components.enumerated()), id: \.offset) { _, component in
+                    ComponentLibraryCard(component: component)
+                }
+            }
+            .padding(.vertical)
+        }
+        .frame(width: 470, height: 700)
+    }
+}
+
+// MARK: - Sample Selections
+
+private extension Array where Element == Component {
+    static var previewGeneral: [Component] {
+        Array(Components.list.prefix(3))
+    }
+
+    static var previewRacks: [Component] {
+        Components.list.filter { $0.isRack }
+    }
+
+    static var previewComingSoon: [Component] {
+        Components.list.filter { $0.comingSoon }
+    }
+
+    static var previewWireless: [Component] {
+        Components.list.filter {
+            $0.category == "Wireless Mic" || $0.category == "Wireless IEM"
+        }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Library Summary") {
+    ComponentLibrarySummaryView()
+}
+
+#Preview("General Components") {
+    ComponentLibraryListPreview(
+        title: "Sample Components",
+        components: .previewGeneral
+    )
+}
+
+#Preview("Rack Components") {
+    ComponentLibraryListPreview(
+        title: "Rack Components",
+        components: .previewRacks
+    )
+}
+
+#Preview("Wireless Components") {
+    ComponentLibraryListPreview(
+        title: "Wireless Components",
+        components: .previewWireless
+    )
+}
+
+#Preview("Coming Soon") {
+    Group {
+        if Array<Component>.previewComingSoon.isEmpty {
+            Text("No coming-soon components in library")
+                .padding()
+        } else {
+            ComponentLibraryListPreview(
+                title: "Coming Soon Components",
+                components: .previewComingSoon
+            )
+        }
+    }
+}
+#endif

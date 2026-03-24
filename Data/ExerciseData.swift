@@ -93,3 +93,225 @@ let builtInExercises: [Exercise] = [
         ]
     ),
 ]
+#if DEBUG
+import SwiftUI
+
+// MARK: - Preview Helpers
+
+private struct BuiltInExerciseCard: View {
+    let exercise: Exercise
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(exercise.title)
+                        .font(.headline)
+
+                    Text(exercise.scenario)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text(exercise.difficulty.displayName)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(difficultyColor.opacity(0.15))
+                    .foregroundStyle(difficultyColor)
+                    .clipShape(Capsule())
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Required")
+                    .font(.subheadline.weight(.semibold))
+                Text(exercise.required.joined(separator: " → "))
+                    .font(.caption)
+            }
+
+            if !exercise.optional.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Optional")
+                        .font(.subheadline.weight(.semibold))
+                    Text(exercise.optional.joined(separator: ", "))
+                        .font(.caption)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Valid Flows")
+                    .font(.subheadline.weight(.semibold))
+
+                ForEach(Array(exercise.validFlows.enumerated()), id: \.offset) { index, flow in
+                    Text("\(index + 1). " + flow.joined(separator: " → "))
+                        .font(.caption)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Hints")
+                    .font(.subheadline.weight(.semibold))
+
+                ForEach(Array(exercise.hints.enumerated()), id: \.offset) { _, hint in
+                    Text("• \(hint)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack {
+                Text("ID: \(exercise.id)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text(exercise.isCustom ? "Custom" : "Built-in")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .frame(width: 440, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(NSColor.windowBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+        .padding(.horizontal)
+    }
+
+    private var difficultyColor: Color {
+        switch exercise.difficulty {
+        case .beginner: .green
+        case .intermediate: .orange
+        case .advanced: .red
+        }
+    }
+}
+
+private struct BuiltInExerciseListPreview: View {
+    let title: String
+    let exercises: [Exercise]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(title)
+                    .font(.title3.weight(.semibold))
+                    .padding(.horizontal)
+
+                Text("Total: \(exercises.count)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+
+                ForEach(exercises) { exercise in
+                    BuiltInExerciseCard(exercise: exercise)
+                }
+            }
+            .padding(.vertical)
+        }
+        .frame(width: 500, height: 760)
+    }
+}
+
+private struct BuiltInExerciseSummaryPreview: View {
+    private var grouped: [(Exercise.Difficulty, [Exercise])] {
+        Exercise.Difficulty.allCases.map { difficulty in
+            (difficulty, builtInExercises.filter { $0.difficulty == difficulty })
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Built-in Exercise Summary")
+                .font(.headline)
+
+            Text("Total Exercises: \(builtInExercises.count)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            ForEach(grouped, id: \.0) { difficulty, exercises in
+                HStack {
+                    Circle()
+                        .fill(color(for: difficulty))
+                        .frame(width: 12, height: 12)
+
+                    Text(difficulty.displayName)
+                        .font(.system(size: 14, weight: .semibold))
+
+                    Spacer()
+
+                    Text("\(exercises.count)")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding()
+        .frame(width: 280, alignment: .leading)
+    }
+
+    private func color(for difficulty: Exercise.Difficulty) -> Color {
+        switch difficulty {
+        case .beginner: .green
+        case .intermediate: .orange
+        case .advanced: .red
+        }
+    }
+}
+
+private extension Array where Element == Exercise {
+    static var previewBeginner: [Exercise] {
+        builtInExercises.filter { $0.difficulty == .beginner }
+    }
+
+    static var previewIntermediate: [Exercise] {
+        builtInExercises.filter { $0.difficulty == .intermediate }
+    }
+
+    static var previewAdvanced: [Exercise] {
+        builtInExercises.filter { $0.difficulty == .advanced }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Exercise Summary") {
+    BuiltInExerciseSummaryPreview()
+}
+
+#Preview("All Built-in Exercises") {
+    BuiltInExerciseListPreview(
+        title: "All Built-in Exercises",
+        exercises: builtInExercises
+    )
+}
+
+#Preview("Beginner Exercises") {
+    BuiltInExerciseListPreview(
+        title: "Beginner Exercises",
+        exercises: .previewBeginner
+    )
+}
+
+#Preview("Intermediate Exercises") {
+    BuiltInExerciseListPreview(
+        title: "Intermediate Exercises",
+        exercises: .previewIntermediate
+    )
+}
+
+#Preview("Advanced Exercises") {
+    BuiltInExerciseListPreview(
+        title: "Advanced Exercises",
+        exercises: .previewAdvanced
+    )
+}
+#endif
