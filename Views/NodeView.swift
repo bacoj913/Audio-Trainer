@@ -79,6 +79,7 @@ struct StandardNodeView: View {
                         }
                     .buttonStyle(.plain)
                     .opacity(isHovered ? 1 : 0)
+                    .allowsHitTesting(isHovered)
                     }
                 .background{
                     RoundedRectangle(cornerRadius: 9)
@@ -166,8 +167,11 @@ struct StandardNodeView: View {
             }
         }
         .onHover { isHovered = $0 }
-        .gesture(
-            DragGesture(minimumDistance: 2)
+        // highPriorityGesture ensures drag wins over child button taps.
+        // minimumDistance:0 so any movement begins the drag immediately.
+        // Port-dot taps still work because taps have zero movement.
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 0)
                 .onChanged { value in
                     guard appState.connectingFromId == nil else { return }
                     if dragStartPos == nil { dragStartPos = instance.position }
@@ -216,30 +220,21 @@ struct PortEdgeDot: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
-            // For input ports: label on the right side (inside card), dot on the left edge
-            // For output ports: dot on the right edge, label on the left side (inside card)
-            if side == "in" {
-                dotCircle
+        // The view's layout frame is exactly the 14×14 dot circle.
+        // .position() in the overlay will center the dot precisely at the card edge.
+        // The label hangs inside the card as a non-interactive overlay.
+        dotCircle
+            .overlay(alignment: side == "in" ? .trailing : .leading) {
                 if !label.isEmpty {
                     Text(label)
                         .font(.system(size: 8))
                         .foregroundColor(.primary.opacity(0.65))
                         .lineLimit(1)
                         .fixedSize()
+                        .allowsHitTesting(false)
+                        .offset(x: side == "in" ? 11 : -11)
                 }
-            } else {
-                if !label.isEmpty {
-                    Text(label)
-                        .font(.system(size: 8))
-                        .foregroundColor(.primary.opacity(0.65))
-                        .lineLimit(1)
-                        .fixedSize()
-                }
-                dotCircle
             }
-        }
-        .offset(x: side == "in" ? -7 : 7)
     }
 
     private var dotCircle: some View {
@@ -445,8 +440,8 @@ struct RackNodeView: View {
             }
         }
         .onHover { isHovered = $0 }
-        .gesture(
-            DragGesture(minimumDistance: 2)
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 0)
                 .onChanged { value in
                     if dragStartPos == nil { dragStartPos = instance.position }
                     guard let start = dragStartPos else { return }
