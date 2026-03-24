@@ -46,7 +46,7 @@ enum Components {
         // ── Processing ───────────────────────────────────────
         Component(id: "di_box",
             name: "Radial J48 DI", iconName: "di",
-            category: "Processing", manufacturer: "Radial Engineering", model: "J48",
+            category: "Sources", manufacturer: "Radial Engineering", model: "J48",
             inputs: ["instrument"], outputs: ["mic"],
             ports: PortInfo(
                 inputs:  ["Instrument In (1/4\")", "Parallel Thru (1/4\")"],
@@ -93,7 +93,7 @@ enum Components {
         // ── Effects ──────────────────────────────────────────
         Component(id: "effects",
             name: "TC Electronic M6000", iconName: "effects",
-            category: "Effects", manufacturer: "TC Electronic", model: "M6000",
+            category: "Processing", manufacturer: "TC Electronic", model: "M6000",
             inputs: ["line"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["AES In 1-8", "Analog In 1-6"],
@@ -102,7 +102,7 @@ enum Components {
 
         Component(id: "effects_pedal",
             name: "Strymon BigSky", iconName: "pedal",
-            category: "Effects", manufacturer: "Strymon", model: "BigSky",
+            category: "Processing", manufacturer: "Strymon", model: "BigSky",
             inputs: ["instrument"], outputs: ["instrument"],
             ports: PortInfo(
                 inputs:  ["L/Mono In (1/4\")", "R In (1/4\")"],
@@ -112,7 +112,7 @@ enum Components {
         // ── Routing / Consoles ───────────────────────────────
         Component(id: "mixer",
             name: "DiGiCo SD12", iconName: "console",
-            category: "Routing", manufacturer: "DiGiCo", model: "SD12",
+            category: "Consoles", manufacturer: "DiGiCo", model: "SD12",
             inputs: ["mic", "line"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["Local XLR 1-12", "Local XLR 13-24", "MADI In A", "MADI In B", "Dante In"],
@@ -121,7 +121,7 @@ enum Components {
 
         Component(id: "mixer_yamaha",
             name: "Yamaha PM7", iconName: "console",
-            category: "Routing", manufacturer: "Yamaha", model: "PM7",
+            category: "Consoles", manufacturer: "Yamaha", model: "PM7",
             inputs: ["mic", "line"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["Local XLR 1-8", "Dante 1-64", "MADI In"],
@@ -130,7 +130,7 @@ enum Components {
 
         Component(id: "mixer_ssl",
             name: "SSL Live L550", iconName: "console",
-            category: "Routing", manufacturer: "Solid State Logic", model: "Live L550",
+            category: "Consoles", manufacturer: "Solid State Logic", model: "Live L550",
             inputs: ["mic", "line"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["Local XLR 1-16", "Dante In 1-64", "MADI In A/B"],
@@ -139,7 +139,7 @@ enum Components {
 
         Component(id: "patch_bay",
             name: "Neutrik NYS-SPP-L Patchbay", iconName: "patchbay",
-            category: "Routing", manufacturer: "Neutrik", model: "NYS-SPP-L",
+            category: "Patching", manufacturer: "Neutrik", model: "NYS-SPP-L",
             inputs: ["line"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["TRS 1-48 (Rear)"],
@@ -149,7 +149,7 @@ enum Components {
         // ── Recording ────────────────────────────────────────
         Component(id: "audio_interface",
             name: "Universal Audio Apollo x8p", iconName: "interface",
-            category: "Recording", manufacturer: "Universal Audio", model: "Apollo x8p",
+            category: "Processing", manufacturer: "Universal Audio", model: "Apollo x8p",
             inputs: ["mic", "line", "instrument"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["XLR/TRS Combo 1-8", "Optical In 1-8", "AES In 1-8"],
@@ -159,7 +159,7 @@ enum Components {
         // ── Output ───────────────────────────────────────────
         Component(id: "power_amp",
             name: "Lab.gruppen PLM 20000Q", iconName: "power_amp",
-            category: "Output", manufacturer: "Lab.gruppen", model: "PLM 20000Q",
+            category: "Amplifiers", manufacturer: "Lab.gruppen", model: "PLM 20000Q",
             inputs: ["line"], outputs: ["speaker"],
             ports: PortInfo(
                 inputs:  ["XLR In 1", "XLR In 2", "XLR In 3", "XLR In 4", "AES In", "Dante In"],
@@ -168,7 +168,7 @@ enum Components {
 
         Component(id: "power_amp_powersoft",
             name: "Powersoft X8", iconName: "power_amp",
-            category: "Output", manufacturer: "Powersoft", model: "X8",
+            category: "Amplifiers", manufacturer: "Powersoft", model: "X8",
             inputs: ["line"], outputs: ["speaker"],
             ports: PortInfo(
                 inputs:  ["XLR In 1", "XLR In 2", "XLR In 3", "XLR In 4",
@@ -179,7 +179,7 @@ enum Components {
 
         Component(id: "speakers",
             name: "L-Acoustics K2", iconName: "speaker",
-            category: "Output", manufacturer: "L-Acoustics", model: "K2",
+            category: "Speakers", manufacturer: "L-Acoustics", model: "K2",
             inputs: ["speaker"], outputs: [],
             ports: PortInfo(
                 inputs:  ["Speakon NL4 (HF)", "Speakon NL4 (LF)"],
@@ -188,7 +188,7 @@ enum Components {
 
         Component(id: "speakers_db",
             name: "d&b audiotechnik Y10P", iconName: "speaker",
-            category: "Output", manufacturer: "d&b audiotechnik", model: "Y10P",
+            category: "Speakers", manufacturer: "d&b audiotechnik", model: "Y10P",
             inputs: ["speaker"], outputs: [],
             ports: PortInfo(
                 inputs:  ["Speakon Input A", "Speakon Input B (thru)"],
@@ -197,7 +197,7 @@ enum Components {
 
         Component(id: "speakers_powered",
             name: "QSC K12.2", iconName: "speaker",
-            category: "Output", manufacturer: "QSC", model: "K12.2",
+            category: "Speakers", manufacturer: "QSC", model: "K12.2",
             inputs: ["line"], outputs: [],
             ports: PortInfo(
                 inputs:  ["XLR/TRS Combo In 1", "XLR/TRS Combo In 2", "XLR Mix Out"],
@@ -206,7 +206,7 @@ enum Components {
 
         Component(id: "monitors",
             name: "Genelec 8351B", iconName: "monitor",
-            category: "Output", manufacturer: "Genelec", model: "8351B",
+            category: "Speakers", manufacturer: "Genelec", model: "8351B",
             inputs: ["line"], outputs: [],
             ports: PortInfo(
                 inputs:  ["XLR Balanced In", "AES In"],
@@ -215,7 +215,7 @@ enum Components {
 
         Component(id: "headphones",
             name: "Sennheiser HD 25", iconName: "headphones",
-            category: "Output", manufacturer: "Sennheiser", model: "HD 25",
+            category: "Speakers", manufacturer: "Sennheiser", model: "HD 25",
             inputs: ["line"], outputs: [],
             ports: PortInfo(
                 inputs:  ["3.5mm TRS", "1/4\" TRS (adapter)"],
@@ -224,7 +224,7 @@ enum Components {
 
         Component(id: "headphone_amp",
             name: "Hear Technologies Hearback PRO", iconName: "headphone_amp",
-            category: "Output", manufacturer: "Hear Technologies", model: "Hearback PRO Hub",
+            category: "Wireless IEMs", manufacturer: "Hear Technologies", model: "Hearback PRO Hub",
             inputs: ["line"], outputs: [],
             ports: PortInfo(
                 inputs:  ["XLR In 1", "XLR In 2", "XLR In 3", "XLR In 4",
@@ -235,7 +235,7 @@ enum Components {
         // ── Wireless Microphones ─────────────────────────────
         Component(id: "wireless_rx",
             name: "Shure AD4Q Receiver", iconName: "wireless_rx",
-            category: "Wireless Mic", manufacturer: "Shure", model: "Axient Digital AD4Q",
+            category: "Wireless Mics", manufacturer: "Shure", model: "Axient Digital AD4Q",
             inputs: ["rf"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["Antenna A (BNC)", "Antenna B (BNC)", "Antenna C (BNC)", "Antenna D (BNC)"],
@@ -244,7 +244,7 @@ enum Components {
 
         Component(id: "wireless_rx_senn",
             name: "Sennheiser EM 6000 Dante", iconName: "wireless_rx",
-            category: "Wireless Mic", manufacturer: "Sennheiser", model: "EM 6000",
+            category: "Wireless Mics", manufacturer: "Sennheiser", model: "EM 6000",
             inputs: ["rf"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["Antenna A (BNC)", "Antenna B (BNC)"],
@@ -253,7 +253,7 @@ enum Components {
 
         Component(id: "wireless_rx_wisycom",
             name: "Wisycom MCR54", iconName: "wireless_rx",
-            category: "Wireless Mic", manufacturer: "Wisycom", model: "MCR54",
+            category: "Wireless Mics", manufacturer: "Wisycom", model: "MCR54",
             inputs: ["rf"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["Antenna A (BNC)", "Antenna B (BNC)"],
@@ -263,7 +263,7 @@ enum Components {
 
         Component(id: "wireless_beltpack_tx",
             name: "Shure AD1 Bodypack TX", iconName: "wireless_tx",
-            category: "Wireless Mic", manufacturer: "Shure", model: "Axient Digital AD1",
+            category: "Wireless Mics", manufacturer: "Shure", model: "Axient Digital AD1",
             inputs: ["mic"], outputs: ["rf"],
             ports: PortInfo(
                 inputs:  ["TA4F (Lemo) Mic/Line In"],
@@ -272,7 +272,7 @@ enum Components {
 
         Component(id: "wireless_beltpack_senn",
             name: "Sennheiser SK 6000 Bodypack", iconName: "wireless_tx",
-            category: "Wireless Mic", manufacturer: "Sennheiser", model: "SK 6000",
+            category: "Wireless Mics", manufacturer: "Sennheiser", model: "SK 6000",
             inputs: ["mic"], outputs: ["rf"],
             ports: PortInfo(
                 inputs:  ["Lemo 3-pin Mic In"],
@@ -281,14 +281,14 @@ enum Components {
 
         Component(id: "wireless_handheld_tx",
             name: "Shure AD2 Handheld TX", iconName: "handheld",
-            category: "Wireless Mic", manufacturer: "Shure", model: "Axient Digital AD2",
+            category: "Wireless Mics", manufacturer: "Shure", model: "Axient Digital AD2",
             inputs: [], outputs: ["rf"],
             ports: PortInfo(inputs: [], outputs: []),
             desc: "Handheld wireless transmitter/mic", level: "Mic → RF"),
 
         Component(id: "wireless_handheld_senn",
             name: "Sennheiser SKM 6000", iconName: "handheld",
-            category: "Wireless Mic", manufacturer: "Sennheiser", model: "SKM 6000",
+            category: "Wireless Mics", manufacturer: "Sennheiser", model: "SKM 6000",
             inputs: [], outputs: ["rf"],
             ports: PortInfo(inputs: [], outputs: []),
             desc: "Handheld wireless transmitter, interchangeable capsule", level: "Mic → RF"),
@@ -296,7 +296,7 @@ enum Components {
         // ── Wireless IEM ─────────────────────────────────────
         Component(id: "iem_tx",
             name: "Shure P10T IEM TX", iconName: "iem_tx",
-            category: "Wireless IEM", manufacturer: "Shure", model: "PSM1000 P10T",
+            category: "Wireless IEMs", manufacturer: "Shure", model: "PSM1000 P10T",
             inputs: ["line"], outputs: ["rf"],
             ports: PortInfo(
                 inputs:  ["XLR In L", "XLR In R", "Dante In"],
@@ -305,7 +305,7 @@ enum Components {
 
         Component(id: "iem_tx_senn",
             name: "Sennheiser SR IEM G4 TX", iconName: "iem_tx",
-            category: "Wireless IEM", manufacturer: "Sennheiser", model: "SR IEM G4",
+            category: "Wireless IEMs", manufacturer: "Sennheiser", model: "SR IEM G4",
             inputs: ["line"], outputs: ["rf"],
             ports: PortInfo(
                 inputs:  ["XLR/TRS Combo In L", "XLR/TRS Combo In R", "Ethernet (RJ45)"],
@@ -314,7 +314,7 @@ enum Components {
 
         Component(id: "iem_rx",
             name: "Shure P10R IEM Bodypack", iconName: "iem_rx",
-            category: "Wireless IEM", manufacturer: "Shure", model: "PSM1000 P10R",
+            category: "Wireless IEMs", manufacturer: "Shure", model: "PSM1000 P10R",
             inputs: ["rf"], outputs: [],
             ports: PortInfo(
                 inputs:  [],
@@ -323,7 +323,7 @@ enum Components {
 
         Component(id: "iem_rx_senn",
             name: "Sennheiser EK IEM G4", iconName: "iem_rx",
-            category: "Wireless IEM", manufacturer: "Sennheiser", model: "EK IEM G4",
+            category: "Wireless IEMs", manufacturer: "Sennheiser", model: "EK IEM G4",
             inputs: ["rf"], outputs: [],
             ports: PortInfo(
                 inputs:  [],
@@ -422,7 +422,7 @@ enum Components {
             desc: "2-channel passive IEM TX combiner with bandpass filters", level: "RF Combining"),
 
         // ── Networking ───────────────────────────────────────
-        Component(id: "network_switch",
+        Component(id: "network_switch_cisco_SG350-28P",
             name: "Cisco SG350-28P PoE Switch", iconName: "network",
             category: "Networking", manufacturer: "Cisco", model: "SG350-28P",
             inputs: ["dante"], outputs: ["dante"],
@@ -433,9 +433,22 @@ enum Components {
                           "Ethernet 4 (RJ45/PoE)", "Ethernet 5-28 (RJ45/PoE)", "SFP 1", "SFP 2"]),
             desc: "28-port Gigabit PoE managed switch for Dante", level: "Dante / AES67"),
 
-        Component(id: "network_switch_luminex",
+        Component(id: "network_switch_luminex_GigaCore_10",
             name: "Luminex GigaCore 10", iconName: "network",
             category: "Networking", manufacturer: "Luminex", model: "GigaCore 10",
+            inputs: ["dante"], outputs: ["dante"],
+            ports: PortInfo(
+                inputs:  ["Ethernet 1 (EtherCon)", "Ethernet 2 (EtherCon)", "Ethernet 3 (EtherCon)",
+                          "Ethernet 4 (EtherCon)", "Ethernet 5 (EtherCon)", "Ethernet 6 (EtherCon)",
+                          "Ethernet 7 (EtherCon)", "Ethernet 8 (EtherCon)", "SFP 1", "SFP 2"],
+                outputs: ["Ethernet 1 (EtherCon)", "Ethernet 2 (EtherCon)", "Ethernet 3 (EtherCon)",
+                          "Ethernet 4 (EtherCon)", "Ethernet 5 (EtherCon)", "Ethernet 6 (EtherCon)",
+                          "Ethernet 7 (EtherCon)", "Ethernet 8 (EtherCon)", "SFP 1", "SFP 2"]),
+            desc: "10-port managed switch, media/show optimized", level: "Dante / AES67"),
+        
+        Component(id: "network_switch_netgear_M4250_8_Port",
+            name: "Netgear M4250 8 Port", iconName: "network",
+            category: "Networking", manufacturer: "Netgear", model: "M4250",
             inputs: ["dante"], outputs: ["dante"],
             ports: PortInfo(
                 inputs:  ["Ethernet 1 (EtherCon)", "Ethernet 2 (EtherCon)", "Ethernet 3 (EtherCon)",
@@ -449,7 +462,7 @@ enum Components {
         // ── Stage Boxes / Snakes ─────────────────────────────
         Component(id: "stagebox_12",
             name: "Yamaha Rio1608-D2 (12ch)", iconName: "stagebox",
-            category: "Stage Boxes", manufacturer: "Yamaha", model: "Rio1608-D2",
+            category: "Stage Racks", manufacturer: "Yamaha", model: "Rio1608-D2",
             inputs: ["mic"], outputs: ["dante"],
             ports: PortInfo(
                 inputs:  ["XLR In 1", "XLR In 2", "XLR In 3", "XLR In 4",
@@ -462,7 +475,7 @@ enum Components {
 
         Component(id: "stagebox_16",
             name: "DiGiCo Orange Box (16ch)", iconName: "stagebox",
-            category: "Stage Boxes", manufacturer: "DiGiCo", model: "Orange Box",
+            category: "Stage Racks", manufacturer: "DiGiCo", model: "Orange Box",
             inputs: ["mic"], outputs: ["dante", "line"],
             ports: PortInfo(
                 inputs:  ["XLR In 1", "XLR In 2", "XLR In 3", "XLR In 4",
@@ -476,7 +489,7 @@ enum Components {
 
         Component(id: "stagebox_24",
             name: "Yamaha Rio3224-D2 (24ch)", iconName: "stagebox",
-            category: "Stage Boxes", manufacturer: "Yamaha", model: "Rio3224-D2",
+            category: "Stage Racks", manufacturer: "Yamaha", model: "Rio3224-D2",
             inputs: ["mic"], outputs: ["dante"],
             ports: PortInfo(
                 inputs:  ["XLR In 1", "XLR In 2", "XLR In 3", "XLR In 4",
@@ -492,7 +505,7 @@ enum Components {
 
         Component(id: "stagebox_32",
             name: "DiGiCo SD-Rack (32ch)", iconName: "stagebox",
-            category: "Stage Boxes", manufacturer: "DiGiCo", model: "SD-Rack 32ch",
+            category: "Stage Racks", manufacturer: "DiGiCo", model: "SD-Rack 32ch",
             inputs: ["mic"], outputs: ["line"],
             ports: PortInfo(
                 inputs:  ["XLR In 1-8", "XLR In 9-16", "XLR In 17-24", "XLR In 25-32"],
@@ -502,7 +515,7 @@ enum Components {
 
         Component(id: "stagebox_40",
             name: "Yamaha Rio6432-D2 (40ch)", iconName: "stagebox",
-            category: "Stage Boxes", manufacturer: "Yamaha", model: "Rio6432-D2",
+            category: "Stage Racks", manufacturer: "Yamaha", model: "Rio6432-D2",
             inputs: ["mic"], outputs: ["dante"],
             ports: PortInfo(
                 inputs:  ["XLR In 1-8", "XLR In 9-16", "XLR In 17-24",
@@ -747,7 +760,7 @@ private extension Array where Element == Component {
 
     static var previewWireless: [Component] {
         Components.list.filter {
-            $0.category == "Wireless Mic" || $0.category == "Wireless IEM"
+            $0.category == "Wireless Mics" || $0.category == "Wireless IEMs"
         }
     }
 }
