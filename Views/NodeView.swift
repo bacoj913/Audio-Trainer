@@ -167,14 +167,15 @@ struct StandardNodeView: View {
         }
         .onHover { isHovered = $0 }
         .gesture(
-            DragGesture(minimumDistance: 0)
+            DragGesture(minimumDistance: 2)
                 .onChanged { value in
                     guard appState.connectingFromId == nil else { return }
                     if dragStartPos == nil { dragStartPos = instance.position }
                     guard let start = dragStartPos else { return }
+                    let s = appState.canvasScale
                     instance.position = CGPoint(
-                        x: max(0, start.x + value.translation.width),
-                        y: max(0, start.y + value.translation.height)
+                        x: max(0, start.x + value.translation.width / s),
+                        y: max(0, start.y + value.translation.height / s)
                     )
                 }
                 .onEnded { _ in dragStartPos = nil }
@@ -445,13 +446,14 @@ struct RackNodeView: View {
         }
         .onHover { isHovered = $0 }
         .gesture(
-            DragGesture(minimumDistance: 0)
+            DragGesture(minimumDistance: 2)
                 .onChanged { value in
                     if dragStartPos == nil { dragStartPos = instance.position }
                     guard let start = dragStartPos else { return }
+                    let s = appState.canvasScale
                     instance.position = CGPoint(
-                        x: max(0, start.x + value.translation.width),
-                        y: max(0, start.y + value.translation.height)
+                        x: max(0, start.x + value.translation.width / s),
+                        y: max(0, start.y + value.translation.height / s)
                     )
                 }
                 .onEnded { _ in dragStartPos = nil }
