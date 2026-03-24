@@ -15,6 +15,7 @@ struct ContentView: View {
         .sheet(isPresented: $appState.showExerciseBuilder) {
             ExerciseBuilderView()
                 .environmentObject(appState)
+            
         }
     }
 }
@@ -88,6 +89,7 @@ struct SegmentButtonStyle: ButtonStyle {
             .background(isActive ? Color(nsColor: .controlBackgroundColor) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .shadow(color: isActive ? .black.opacity(0.12) : .clear, radius: 3, x: 0, y: 1)
+            
     }
 }
 
@@ -113,7 +115,7 @@ struct ToolbarBarView: View {
                 .fill(Color.primary.opacity(0.12))
                 .frame(width: 1, height: 18)
                 .padding(.horizontal, 4)
-
+                
             Text(appState.connectingFromId != nil
                  ? "Click an input port to connect  |  Click a connected input to disconnect"
                  : "Drag components from the sidebar  |  Pinch to zoom  |  Drag background to pan")
@@ -134,6 +136,7 @@ struct ToolbarBarView: View {
         .frame(height: 38)
         .background(.ultraThinMaterial)
         .overlay(Divider(), alignment: .bottom)
+        
     }
 }
 

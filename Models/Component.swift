@@ -38,10 +38,9 @@ struct Component {
 
 // MARK: - Category Order
 let categoryOrder: [String] = [
-    "Sources", "Processing", "Effects", "Routing", "Recording",
-    "Output", "Wireless Mic", "Wireless IEM", "Antennas",
-    "Networking", "Stage Boxes", "Racks", "Power", "2 Wire Comms", "4 Wire Comms",
-    "Wireless Comms", "Comm Matrices"
+    "Sources", "Processing", "Patching", "Consoles",
+    "Amplifiers", "Wireless Mics", "Wireless IEMs", "Antennas",
+    "Networking", "Stage Racks", "Stage Boxes", "Racks", "Speakers", "Power", "Intercom"
 ]
 
 // MARK: - Signal type colors (for port dots and connection wires)
@@ -62,23 +61,21 @@ extension Color {
 extension Color {
     static func categoryColor(_ category: String) -> Color {
         switch category {
-        case "Sources":      return Color(red: 0.20, green: 0.78, blue: 0.35) // green
-        case "Processing":   return Color(red: 0.00, green: 0.48, blue: 1.00) // blue
-        case "Effects":      return Color(red: 0.60, green: 0.36, blue: 1.00) // purple
-        case "Routing":      return Color(red: 1.00, green: 0.62, blue: 0.04) // orange
-        case "Recording":    return Color(red: 1.00, green: 0.27, blue: 0.23) // red
-        case "Output":       return Color(red: 0.99, green: 0.23, blue: 0.49) // pink
-        case "Wireless Mic": return Color(red: 0.00, green: 0.73, blue: 0.91) // cyan
-        case "Wireless IEM": return Color(red: 0.37, green: 0.82, blue: 0.75) // teal
-        case "Antennas":     return Color(red: 0.55, green: 0.55, blue: 0.58) // gray
-        case "Networking":   return Color(red: 0.24, green: 0.67, blue: 0.50) // dark teal
-        case "Stage Boxes":  return Color(red: 0.64, green: 0.44, blue: 0.28) // brown
-        case "Racks":        return Color(red: 0.36, green: 0.36, blue: 0.38) // dark gray
-        case "Power":        return Color(red: 1.00, green: 0.60, blue: 0.00) // amber
-        case "2 Wire Comms": return Color(red: 0.00, green: 0.48, blue: 1.00) // dark blue
-        case "4 Wire Comms": return Color(red: 0.11, green: 0.33, blue: 0.68)
-        case "Wireless Comms": return Color(red: 0.00, green: 0.73, blue: 0.91)
-        case "Comm Matrices": return Color(red: 0.00, green: 0.48, blue: 1.00) 
+        case "Sources":      return Color(.systemCyan)
+        case "Processing":   return Color(.systemPurple)
+        case "Patching":     return Color(.systemYellow)
+        case "Consoles":     return Color(.systemMint)
+        case "Amplifiers":   return Color(.systemBlue)
+        case "Wireless Mics": return Color(.systemCyan)
+        case "Wireless IEMs": return Color(.systemIndigo)
+        case "Antennas":     return Color(.systemGray)
+        case "Networking":   return Color(.systemGreen)
+        case "Stage Racks":  return Color(.systemYellow)
+        case "Stage Boxes":  return Color(.systemBrown)
+        case "Racks":        return Color(.systemGray)
+        case "Speakers":     return Color(.systemPink)
+        case "Power":        return Color(.systemOrange)
+        case "Intercom":     return Color(.systemTeal) // dark blue
         default:             return Color.gray
         }
     }
