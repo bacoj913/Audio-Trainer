@@ -47,9 +47,22 @@
 		51E852862F72CCEC00AF1B8B /* AppState+Preview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Preview.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5131C8802F72E47900C5E043 /* Exceptions for "Signal Flow App V3" folder in "Signal Flow App V3" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Signal-Flow-App-V3-Info.plist",
+			);
+			target = 5190CFC62F72BC8400D14744 /* Signal Flow App V3 */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5190CFC92F72BC8400D14744 /* Signal Flow App V3 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5131C8802F72E47900C5E043 /* Exceptions for "Signal Flow App V3" folder in "Signal Flow App V3" target */,
+			);
 			path = "Signal Flow App V3";
 			sourceTree = "<group>";
 		};
@@ -338,6 +351,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Signal-Flow-App-V3-Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -380,6 +394,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Signal-Flow-App-V3-Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
