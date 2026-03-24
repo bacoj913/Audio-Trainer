@@ -103,6 +103,11 @@ struct ToolbarBarView: View {
             ToolbarButton(icon: "square.grid.3x3", label: "Arrange") {
                 appState.autoLayout()
             }
+            ToolbarButton(icon: "arrow.up.left.and.arrow.down.right", label: "Reset Zoom") {
+                appState.resetCanvasView()
+            }
+            .help("Reset zoom and pan (⌘0)")
+            .keyboardShortcut("0", modifiers: .command)
 
             Rectangle()
                 .fill(Color.primary.opacity(0.12))
@@ -110,12 +115,20 @@ struct ToolbarBarView: View {
                 .padding(.horizontal, 4)
 
             Text(appState.connectingFromId != nil
-                 ? "Click an input port on another component to connect"
-                 : "Drag components from the sidebar to begin")
+                 ? "Click an input port to connect  |  Click a connected input to disconnect"
+                 : "Drag components from the sidebar  |  Pinch to zoom  |  Drag background to pan")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
 
             Spacer()
+
+            // Zoom level indicator
+            if appState.canvasScale != 1.0 {
+                Text("\(Int(appState.canvasScale * 100))%")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .padding(.trailing, 4)
+            }
         }
         .padding(.horizontal, 12)
         .frame(height: 38)
@@ -160,8 +173,22 @@ struct AppBodyView: View {
                     SidebarView()
                         .frame(width: 210)
                     Divider()
-                    CanvasView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Canvas area: tab bar + canvas/rack view
+                    VStack(spacing: 0) {
+                        // Only show tab bar when there are multiple tabs
+                        if appState.tabs.count > 1 {
+                            CanvasTabBar()
+                        }
+                        // Show rack canvas or main canvas based on active tab
+                        if appState.activeTab.parentRackInstanceId != nil {
+                            RackCanvasView()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            CanvasView()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     Divider()
                     InspectorView()
                         .frame(width: 220)

@@ -11,10 +11,27 @@ class NodeInstance: ObservableObject, Identifiable {
     let id = UUID()
     let type: String
     @Published var position: CGPoint
+    var rackSlot: Int? = nil   // U-slot index within a rack tab (nil if on main canvas)
 
     init(type: String, position: CGPoint) {
         self.type = type
         self.position = position
+    }
+}
+
+// MARK: - Canvas Tab
+class CanvasTab: ObservableObject, Identifiable {
+    let id = UUID()
+    var name: String
+    var parentRackInstanceId: UUID?   // nil = main canvas
+
+    @Published var instances: [NodeInstance] = []
+    @Published var connections: [NodeConnection] = []
+    @Published var portPositions: [String: CGPoint] = [:]
+
+    init(name: String, parentRackInstanceId: UUID? = nil) {
+        self.name = name
+        self.parentRackInstanceId = parentRackInstanceId
     }
 }
 
@@ -44,11 +61,8 @@ struct RFGearItem: Identifiable {
 // MARK: - App State
 class AppState: ObservableObject {
     @Published var mode: AppMode = .free
-    @Published var instances: [NodeInstance] = []
-    @Published var connections: [NodeConnection] = []
     @Published var connectingFromId: UUID? = nil
     @Published var connectingFromPortIndex: Int = 0
-    @Published var portPositions: [String: CGPoint] = [:]
     @Published var mousePosition: CGPoint = .zero
     @Published var exerciseIndex: Int = 0
     @Published var hintIndex: Int = 0
@@ -56,6 +70,34 @@ class AppState: ObservableObject {
     @Published var isDarkMode: Bool = false
     @Published var exercises: [Exercise] = builtInExercises
     @Published var rfState: RFState = RFState()
+    @Published var canvasScale: CGFloat = 1.0
+    @Published var canvasOffset: CGSize = .zero
+
+    // MARK: - Tab system
+    @Published var tabs: [CanvasTab] = [CanvasTab(name: "Main")]
+    @Published var activeTabIndex: Int = 0
+
+    var activeTab: CanvasTab { tabs[activeTabIndex] }
+
+    /// Forwards active tab's objectWillChange → AppState so views re-render on tab data changes.
+    private var activeTabObserver: AnyCancellable?
+
+    init() { observeActiveTab() }
+
+    private func observeActiveTab() {
+        guard activeTabIndex < tabs.count else { return }
+        activeTabObserver = tabs[activeTabIndex].objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+    }
+
+    // Computed proxies so existing call-sites continue to compile
+    var instances: [NodeInstance] { activeTab.instances }
+    var connections: [NodeConnection] { activeTab.connections }
+    var portPositions: [String: CGPoint] {
+        get { activeTab.portPositions }
+        set { activeTab.portPositions = newValue }
+    }
 
     private var nextNodeId = 1
 
@@ -67,37 +109,71 @@ class AppState: ObservableObject {
     /// Look up the canvas-space center of a specific port by index.
     /// Positions are reported by PortEdgeDot views via PortAnchorPref.
     func portCenter(for instanceId: UUID, portIndex: Int, side: String) -> CGPoint? {
-        portPositions["\(instanceId)-\(side)-\(portIndex)"]
+        activeTab.portPositions["\(instanceId)-\(side)-\(portIndex)"]
+    }
+
+    // MARK: - Tab Management
+    func openRackTab(for instanceId: UUID) {
+        if let idx = tabs.firstIndex(where: { $0.parentRackInstanceId == instanceId }) {
+            activeTabIndex = idx
+            observeActiveTab()
+            return
+        }
+        let inst = activeTab.instances.first { $0.id == instanceId }
+        let comp = Components.all[inst?.type ?? ""]
+        let tab = CanvasTab(name: comp?.name ?? "Rack", parentRackInstanceId: instanceId)
+        tabs.append(tab)
+        activeTabIndex = tabs.count - 1
+        observeActiveTab()
+    }
+
+    func closeTab(id: UUID) {
+        guard tabs.count > 1, let idx = tabs.firstIndex(where: { $0.id == id }) else { return }
+        tabs.remove(at: idx)
+        activeTabIndex = max(0, min(activeTabIndex, tabs.count - 1))
+        observeActiveTab()
+    }
+
+    func switchTab(index: Int) {
+        guard index >= 0 && index < tabs.count else { return }
+        activeTabIndex = index
+        observeActiveTab()
     }
 
     // MARK: - Node Management
     @discardableResult
     func addInstance(type: String, position: CGPoint) -> NodeInstance {
         let inst = NodeInstance(type: type, position: position)
-        instances.append(inst)
+        activeTab.instances.append(inst)
         return inst
     }
 
     func deleteNode(id: UUID) {
-        connections.removeAll { $0.fromId == id || $0.toId == id }
-        portPositions = portPositions.filter { !$0.key.hasPrefix(id.uuidString) }
-        instances.removeAll { $0.id == id }
+        activeTab.connections.removeAll { $0.fromId == id || $0.toId == id }
+        activeTab.portPositions = activeTab.portPositions.filter { !$0.key.hasPrefix(id.uuidString) }
+        activeTab.instances.removeAll { $0.id == id }
         if connectingFromId == id { connectingFromId = nil }
+        // Also close any rack tab for this instance
+        if let rackTabIdx = tabs.firstIndex(where: { $0.parentRackInstanceId == id }) {
+            tabs.remove(at: rackTabIdx)
+            activeTabIndex = max(0, min(activeTabIndex, tabs.count - 1))
+            observeActiveTab()
+        }
     }
 
     func clearCanvas() {
-        instances.removeAll()
-        connections.removeAll()
-        portPositions.removeAll()
+        activeTab.instances.removeAll()
+        activeTab.connections.removeAll()
+        activeTab.portPositions.removeAll()
         connectingFromId = nil
     }
 
     func autoLayout() {
-        guard !instances.isEmpty else { return }
-        let cols = Int(ceil(sqrt(Double(instances.count))))
+        guard !activeTab.instances.isEmpty else { return }
+        let cols = Int(ceil(sqrt(Double(activeTab.instances.count))))
         let cellW: CGFloat = 200
         let cellH: CGFloat = 160
-        for (i, inst) in instances.enumerated() {
+        for (i, inst) in activeTab.instances.enumerated() {
             let col = i % cols
             let row = i / cols
             inst.position = CGPoint(x: 40 + CGFloat(col) * cellW, y: 40 + CGFloat(row) * cellH)
@@ -115,18 +191,18 @@ class AppState: ObservableObject {
             connectingFromId = nil
             return
         }
-        let fromComp = Components.all[instances.first(where: { $0.id == fromId })?.type ?? ""]
-        let toComp = Components.all[instances.first(where: { $0.id == toId })?.type ?? ""]
+        let fromComp = Components.all[activeTab.instances.first(where: { $0.id == fromId })?.type ?? ""]
+        let toComp = Components.all[activeTab.instances.first(where: { $0.id == toId })?.type ?? ""]
         if fromComp?.comingSoon == true || toComp?.comingSoon == true {
             connectingFromId = nil
             return
         }
-        let exists = connections.contains {
+        let exists = activeTab.connections.contains {
             $0.fromId == fromId && $0.fromPortIndex == connectingFromPortIndex &&
             $0.toId == toId && $0.toPortIndex == toPortIndex
         }
         if !exists {
-            connections.append(NodeConnection(
+            activeTab.connections.append(NodeConnection(
                 fromId: fromId, fromPortIndex: connectingFromPortIndex,
                 toId: toId, toPortIndex: toPortIndex))
         }
@@ -136,7 +212,13 @@ class AppState: ObservableObject {
     func cancelConnecting() { connectingFromId = nil }
 
     func removeConnection(_ id: UUID) {
-        connections.removeAll { $0.id == id }
+        activeTab.connections.removeAll { $0.id == id }
+    }
+
+    func disconnectInput(instanceId: UUID, portIndex: Int) {
+        activeTab.connections.removeAll {
+            $0.toId == instanceId && $0.toPortIndex == portIndex
+        }
     }
 
     // MARK: - Exercises
@@ -207,7 +289,7 @@ class AppState: ObservableObject {
         for (a, b) in qs.flows {
             let conn = NodeConnection(fromId: addedIds[a].id, fromPortIndex: 0,
                                      toId: addedIds[b].id, toPortIndex: 0)
-            connections.append(conn)
+            activeTab.connections.append(conn)
         }
     }
 
@@ -232,6 +314,12 @@ class AppState: ObservableObject {
         for ex in custom where !exercises.contains(where: { $0.id == ex.id }) {
             exercises.append(ex)
         }
+    }
+
+    // MARK: - Canvas Zoom/Pan
+    func resetCanvasView() {
+        canvasScale = 1.0
+        canvasOffset = .zero
     }
 
     // MARK: - Dark Mode

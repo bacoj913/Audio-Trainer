@@ -44,6 +44,20 @@ let categoryOrder: [String] = [
     "Wireless Comms", "Comm Matrices"
 ]
 
+// MARK: - Signal type colors (for port dots and connection wires)
+extension Color {
+    static func signalTypeColor(_ type: String) -> Color {
+        switch type {
+        case "mic":        return Color(red: 0.20, green: 0.78, blue: 0.35) // green
+        case "line":       return Color(red: 0.00, green: 0.48, blue: 1.00) // blue
+        case "instrument": return Color(red: 1.00, green: 0.62, blue: 0.04) // orange
+        case "speaker":    return Color(red: 1.00, green: 0.27, blue: 0.23) // red
+        case "rf":         return Color(red: 0.00, green: 0.73, blue: 0.91) // cyan
+        default:           return Color(red: 0.55, green: 0.55, blue: 0.58) // gray
+        }
+    }
+}
+
 // MARK: - Category accent colors (for node stripe)
 extension Color {
     static func categoryColor(_ category: String) -> Color {

@@ -19,7 +19,7 @@ extension CGRect {
 }
 
 /// Evenly distribute N ports along a card edge, with a margin from top/bottom.
-private func evenPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
+func evenPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
     guard total > 0 else { return height / 2 }
     if total == 1 { return height / 2 }
     let margin: CGFloat = 18
@@ -122,8 +122,6 @@ struct StandardNodeView: View {
                         .clipShape(Capsule())
                 }
 
-                // ── ALL named I/O ports ──
-                PortListSection(inputs: comp.ports.inputs, outputs: comp.ports.outputs)
             }
             .padding(.horizontal, 9)
             .padding(.top, 6)
@@ -146,22 +144,30 @@ struct StandardNodeView: View {
         .overlay {
             GeometryReader { geo in
                 // Input dots — left edge
-                ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, _ in
+                ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, portName in
+                    let sigType = comp.inputs.indices.contains(idx)
+                        ? comp.inputs[idx]
+                        : (comp.inputs.first ?? "line")
                     PortEdgeDot(instance: instance, portIndex: idx, side: "in",
-                                total: comp.ports.inputs.count)
+                                total: comp.ports.inputs.count,
+                                label: portName, signalType: sigType)
                         .position(x: 0, y: evenPortY(idx: idx, total: comp.ports.inputs.count, height: geo.size.height))
                 }
                 // Output dots — right edge
-                ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, _ in
+                ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, portName in
+                    let sigType = comp.outputs.indices.contains(idx)
+                        ? comp.outputs[idx]
+                        : (comp.outputs.first ?? "line")
                     PortEdgeDot(instance: instance, portIndex: idx, side: "out",
-                                total: comp.ports.outputs.count)
+                                total: comp.ports.outputs.count,
+                                label: portName, signalType: sigType)
                         .position(x: geo.size.width, y: evenPortY(idx: idx, total: comp.ports.outputs.count, height: geo.size.height))
                 }
             }
         }
         .onHover { isHovered = $0 }
         .gesture(
-            DragGesture(minimumDistance: 1, coordinateSpace: .named("canvas"))
+            DragGesture(minimumDistance: 0)
                 .onChanged { value in
                     guard appState.connectingFromId == nil else { return }
                     if dragStartPos == nil { dragStartPos = instance.position }
@@ -177,18 +183,18 @@ struct StandardNodeView: View {
 }
 
 // MARK: - Port Edge Dot
-/// An interactive circle rendered on the left (input) or right (output) edge of a node card.
-/// Reports its canvas-space center via PortAnchorPref so connection curves can be drawn.
+/// An interactive circle on the left (input) or right (output) edge of a node card.
+/// Color is based on signal type. Reports canvas-space center via PortAnchorPref.
 struct PortEdgeDot: View {
     @ObservedObject var instance: NodeInstance
     let portIndex: Int
-    let side: String   // "in" or "out"
+    let side: String        // "in" or "out"
     let total: Int
+    var label: String = ""
+    var signalType: String = "line"
     @EnvironmentObject var appState: AppState
 
-    private var color: Color {
-        side == "in" ? Color(red: 0.37, green: 0.36, blue: 0.90) : Color.blue
-    }
+    private var color: Color { Color.signalTypeColor(signalType) }
 
     private var isSource: Bool {
         appState.connectingFromId == instance.id && appState.connectingFromPortIndex == portIndex
@@ -196,14 +202,62 @@ struct PortEdgeDot: View {
 
     private var isConnecting: Bool { appState.connectingFromId != nil }
 
+    private var isConnected: Bool {
+        if side == "in" {
+            return appState.activeTab.connections.contains {
+                $0.toId == instance.id && $0.toPortIndex == portIndex
+            }
+        } else {
+            return appState.activeTab.connections.contains {
+                $0.fromId == instance.id && $0.fromPortIndex == portIndex
+            }
+        }
+    }
+
     var body: some View {
+        HStack(spacing: 4) {
+            // For input ports: label on the right side (inside card), dot on the left edge
+            // For output ports: dot on the right edge, label on the left side (inside card)
+            if side == "in" {
+                dotCircle
+                if !label.isEmpty {
+                    Text(label)
+                        .font(.system(size: 8))
+                        .foregroundColor(.primary.opacity(0.65))
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+            } else {
+                if !label.isEmpty {
+                    Text(label)
+                        .font(.system(size: 8))
+                        .foregroundColor(.primary.opacity(0.65))
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                dotCircle
+            }
+        }
+        .offset(x: side == "in" ? -7 : 7)
+    }
+
+    private var dotCircle: some View {
         Circle()
-            .fill(color)
+            .fill(isConnected && side == "in" && !isConnecting
+                  ? Color.red.opacity(0.75)
+                  : color)
             .frame(width: 14, height: 14)
             .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+            .overlay {
+                // Show × on connected input ports to hint at disconnect
+                if isConnected && side == "in" && !isConnecting {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 6, weight: .black))
+                        .foregroundColor(.white)
+                }
+            }
             .shadow(color: color.opacity(0.5),
                     radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0))
-            .offset(x: side == "in" ? -7 : 7)
             .background(
                 GeometryReader { geo in
                     Color.clear.preference(
@@ -223,10 +277,15 @@ struct PortEdgeDot: View {
                 } else {
                     if isConnecting {
                         appState.finishConnecting(toId: instance.id, toPortIndex: portIndex)
+                    } else if isConnected {
+                        // Fix 5: click connected input port to disconnect
+                        appState.disconnectInput(instanceId: instance.id, portIndex: portIndex)
                     }
                 }
             }
-            .help(side == "in" ? "Input — click to connect" : "Output — click to start connection")
+            .help(side == "in"
+                  ? (isConnected ? "Click to disconnect" : "Input — click to connect")
+                  : "Output — click to start connection")
     }
 }
 
@@ -311,6 +370,22 @@ struct RackNodeView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
+                // Open inner rack canvas
+                Button {
+                    appState.openRackTab(for: instance.id)
+                } label: {
+                    HStack(spacing: 3) {
+                        Text("Open")
+                            .font(.system(size: 9, weight: .medium))
+                        Image(systemName: "arrow.forward.circle")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                .opacity(isHovered ? 1 : 0)
+                .padding(.trailing, 2)
+
                 Button { appState.deleteNode(id: instance.id) } label: {
                     Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundColor(.secondary)
                 }
@@ -348,21 +423,29 @@ struct RackNodeView: View {
         // ── Per-port interactive dots on card edges ──
         .overlay {
             GeometryReader { geo in
-                ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, _ in
+                ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, portName in
+                    let sigType = comp.inputs.indices.contains(idx)
+                        ? comp.inputs[idx]
+                        : (comp.inputs.first ?? "line")
                     PortEdgeDot(instance: instance, portIndex: idx, side: "in",
-                                total: comp.ports.inputs.count)
+                                total: comp.ports.inputs.count,
+                                label: portName, signalType: sigType)
                         .position(x: 0, y: evenPortY(idx: idx, total: comp.ports.inputs.count, height: geo.size.height))
                 }
-                ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, _ in
+                ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, portName in
+                    let sigType = comp.outputs.indices.contains(idx)
+                        ? comp.outputs[idx]
+                        : (comp.outputs.first ?? "line")
                     PortEdgeDot(instance: instance, portIndex: idx, side: "out",
-                                total: comp.ports.outputs.count)
+                                total: comp.ports.outputs.count,
+                                label: portName, signalType: sigType)
                         .position(x: geo.size.width, y: evenPortY(idx: idx, total: comp.ports.outputs.count, height: geo.size.height))
                 }
             }
         }
         .onHover { isHovered = $0 }
         .gesture(
-            DragGesture(minimumDistance: 2, coordinateSpace: .named("canvas"))
+            DragGesture(minimumDistance: 0)
                 .onChanged { value in
                     if dragStartPos == nil { dragStartPos = instance.position }
                     guard let start = dragStartPos else { return }

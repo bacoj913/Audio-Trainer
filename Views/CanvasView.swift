@@ -1,4 +1,4 @@
-// Views/CanvasView.swift — Interactive canvas with draggable nodes and bezier connections
+// Views/CanvasView.swift — Interactive canvas with zoom/pan, draggable nodes and bezier connections
 
 import SwiftUI
 import UniformTypeIdentifiers
@@ -7,63 +7,107 @@ struct CanvasView: View {
     @EnvironmentObject var appState: AppState
     @State private var mousePos: CGPoint = .zero
     @State private var isDragTarget = false
+    @State private var scaleAtGestureStart: CGFloat = 1.0
+    @State private var panStartOffset: CGSize = .zero
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
-                // ── Canvas background ──
+
+                // ── Canvas background — handles pan drag ──
                 Color(nsColor: .textBackgroundColor)
-                    .overlay(canvasDotGrid)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                if appState.connectingFromId != nil {
+                                    appState.cancelConnecting()
+                                    return
+                                }
+                                appState.canvasOffset = CGSize(
+                                    width: panStartOffset.width + value.translation.width,
+                                    height: panStartOffset.height + value.translation.height
+                                )
+                            }
+                            .onEnded { _ in
+                                panStartOffset = appState.canvasOffset
+                            }
+                    )
+                    .onTapGesture { appState.cancelConnecting() }
 
-                // ── Empty state hint ──
-                if appState.instances.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "slider.horizontal.3")
-                            .font(.system(size: 36))
-                            .foregroundColor(.secondary.opacity(0.3))
-                        Text("Drag components from the sidebar to begin")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary.opacity(0.4))
+                // ── Scaled & panned canvas content ──
+                ZStack(alignment: .topLeading) {
+
+                    // Dot grid
+                    canvasDotGrid
+
+                    // Empty state hint
+                    if appState.instances.isEmpty {
+                        VStack(spacing: 10) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 36))
+                                .foregroundColor(.secondary.opacity(0.3))
+                            Text("Drag components from the sidebar to begin")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary.opacity(0.4))
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
 
-                // ── Bezier connection curves ──
-                Canvas { ctx, _ in
-                    drawConnections(ctx: ctx)
-                    if let fromId = appState.connectingFromId,
-                       let src = appState.portCenter(for: fromId, portIndex: appState.connectingFromPortIndex, side: "out") {
-                        drawPreview(ctx: ctx, from: src, to: mousePos)
+                    // Bezier connection curves
+                    Canvas { ctx, _ in
+                        drawConnections(ctx: ctx)
+                        if let fromId = appState.connectingFromId,
+                           let src = appState.portCenter(for: fromId,
+                                                         portIndex: appState.connectingFromPortIndex,
+                                                         side: "out") {
+                            drawPreview(ctx: ctx, from: src, to: mousePos)
+                        }
+                    }
+                    .allowsHitTesting(false)
+
+                    // Connection delete hit areas
+                    ForEach(appState.connections) { conn in
+                        ConnectionHitArea(connection: conn)
+                    }
+
+                    // Component nodes
+                    ForEach(appState.instances) { instance in
+                        NodeView(instance: instance)
+                            .position(
+                                x: instance.position.x + nodeHalfWidth(for: instance),
+                                y: instance.position.y + 30
+                            )
                     }
                 }
-                .allowsHitTesting(false)
-
-                // ── Connection delete hit areas ──
-                ForEach(appState.connections) { conn in
-                    ConnectionHitArea(connection: conn)
-                }
-
-                // ── Component nodes ──
-                ForEach(appState.instances) { instance in
-                    NodeView(instance: instance)
-                        .position(
-                            x: instance.position.x + nodeHalfWidth(for: instance),
-                            y: instance.position.y + 30
-                        )
-                }
+                .scaleEffect(appState.canvasScale, anchor: .topLeading)
+                .offset(appState.canvasOffset)
+                .coordinateSpace(name: "canvas")
             }
-            .coordinateSpace(name: "canvas")
             .contentShape(Rectangle())
-            // Cancel connecting on canvas tap
-            .onTapGesture { appState.cancelConnecting() }
-            // Track mouse for preview line
+            // Track mouse for connection preview line (convert screen → canvas coords)
             .onContinuousHover { phase in
-                if case .active(let loc) = phase { mousePos = loc }
+                if case .active(let loc) = phase {
+                    mousePos = CGPoint(
+                        x: (loc.x - appState.canvasOffset.width) / appState.canvasScale,
+                        y: (loc.y - appState.canvasOffset.height) / appState.canvasScale
+                    )
+                }
             }
+            // Pinch to zoom (trackpad)
+            .gesture(
+                MagnifyGesture()
+                    .onChanged { value in
+                        appState.canvasScale = max(0.25, min(4.0,
+                            scaleAtGestureStart * value.magnification))
+                    }
+                    .onEnded { _ in
+                        scaleAtGestureStart = appState.canvasScale
+                    }
+            )
             // Collect port anchor positions reported by PortEdgeDot views
             .onPreferenceChange(PortAnchorPref.self) { positions in
                 DispatchQueue.main.async {
-                    appState.portPositions.merge(positions) { $1 }
+                    appState.activeTab.portPositions.merge(positions) { $1 }
                 }
             }
             // Drop target for palette items
@@ -72,9 +116,12 @@ struct CanvasView: View {
                     guard let data = data as? Data,
                           let typeId = String(data: data, encoding: .utf8) else { return }
                     DispatchQueue.main.async {
+                        // Convert drop location from screen to canvas coordinates
+                        let canvasX = (location.x - appState.canvasOffset.width) / appState.canvasScale
+                        let canvasY = (location.y - appState.canvasOffset.height) / appState.canvasScale
                         let pos = CGPoint(
-                            x: max(10, location.x - NodeView.width / 2),
-                            y: max(10, location.y - 40)
+                            x: max(10, canvasX - NodeView.width / 2),
+                            y: max(10, canvasY - 40)
                         )
                         appState.addInstance(type: typeId, position: pos)
                     }
@@ -87,6 +134,11 @@ struct CanvasView: View {
                         .stroke(Color.blue.opacity(0.4), lineWidth: 2)
                     : nil
             )
+        }
+        .onAppear {
+            // Sync panStartOffset on appear in case scale/offset was pre-set
+            panStartOffset = appState.canvasOffset
+            scaleAtGestureStart = appState.canvasScale
         }
     }
 
@@ -103,6 +155,9 @@ struct CanvasView: View {
                   let dst = appState.portCenter(for: conn.toId,   portIndex: conn.toPortIndex,   side: "in")
             else { continue }
 
+            // Determine wire color from the output port's signal type
+            let wireColor = connectionColor(for: conn)
+
             var path = Path()
             path.move(to: src)
             let cx = (dst.x - src.x) * 0.6
@@ -111,12 +166,32 @@ struct CanvasView: View {
                           control2: CGPoint(x: dst.x - cx, y: dst.y))
 
             ctx.stroke(path,
-                       with: .color(Color.blue.opacity(0.7)),
+                       with: .color(wireColor.opacity(0.75)),
                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
 
-            // Arrowhead at destination
-            drawArrowhead(ctx: ctx, at: dst, from: src)
+            drawArrowhead(ctx: ctx, at: dst, from: src, color: wireColor.opacity(0.75))
         }
+    }
+
+    private func connectionColor(for conn: NodeConnection) -> Color {
+        let fromInst = appState.instances.first { $0.id == conn.fromId }
+        let fromComp = Components.all[fromInst?.type ?? ""]
+        let outputs = fromComp?.outputs ?? []
+        let sigType = outputs.indices.contains(conn.fromPortIndex)
+            ? outputs[conn.fromPortIndex]
+            : outputs.first ?? "line"
+        return Color.signalTypeColor(sigType)
+    }
+
+    private func activeOutputSignalType() -> Color {
+        guard let fromId = appState.connectingFromId else { return Color.blue.opacity(0.45) }
+        let fromInst = appState.instances.first { $0.id == fromId }
+        let fromComp = Components.all[fromInst?.type ?? ""]
+        let outputs = fromComp?.outputs ?? []
+        let sigType = outputs.indices.contains(appState.connectingFromPortIndex)
+            ? outputs[appState.connectingFromPortIndex]
+            : outputs.first ?? "line"
+        return Color.signalTypeColor(sigType).opacity(0.45)
     }
 
     private func drawPreview(ctx: GraphicsContext, from: CGPoint, to: CGPoint) {
@@ -127,11 +202,11 @@ struct CanvasView: View {
                       control1: CGPoint(x: from.x + cx, y: from.y),
                       control2: CGPoint(x: to.x - cx,   y: to.y))
         ctx.stroke(path,
-                   with: .color(Color.blue.opacity(0.45)),
+                   with: .color(activeOutputSignalType()),
                    style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 3]))
     }
 
-    private func drawArrowhead(ctx: GraphicsContext, at tip: CGPoint, from origin: CGPoint) {
+    private func drawArrowhead(ctx: GraphicsContext, at tip: CGPoint, from origin: CGPoint, color: Color) {
         let angle = atan2(tip.y - origin.y, tip.x - origin.x)
         let arrowLen: CGFloat = 8
         let arrowAngle: CGFloat = .pi / 6
@@ -149,7 +224,7 @@ struct CanvasView: View {
         arrow.addLine(to: p2)
         arrow.closeSubpath()
 
-        ctx.fill(arrow, with: .color(Color.blue.opacity(0.7)))
+        ctx.fill(arrow, with: .color(color))
     }
 
     // MARK: - Dot grid background
