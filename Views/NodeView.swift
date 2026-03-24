@@ -61,13 +61,8 @@ struct StandardNodeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
-            // Category colour stripe
-            Rectangle()
-                .fill(Color.categoryColor(comp.category))
-                .frame(height: 3)
-
             VStack(alignment: .leading, spacing: 4) {
-                // Header row
+                ZStack{ // Header row
                 HStack(spacing: 6) {
                     ComponentIcon(name: comp.iconName)
                         .frame(width: 18, height: 18)
@@ -81,11 +76,16 @@ struct StandardNodeView: View {
                         Image(systemName: "xmark")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.secondary)
-                    }
+                        }
                     .buttonStyle(.plain)
                     .opacity(isHovered ? 1 : 0)
+                    }
+                .background{
+                    RoundedRectangle(cornerRadius: 9)
+                        .fill(Color.categoryColor(comp.category))
+                        .frame(width: NodeView.width-9)
+                    }
                 }
-
                 // Manufacturer
                 if comp.manufacturer != "Generic" {
                     Text(comp.manufacturer)
