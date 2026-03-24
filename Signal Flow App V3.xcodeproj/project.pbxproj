@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5131C8822F72E6E000C5E043 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8812F72E6E000C5E043 /* ContentView.swift */; };
 		518445182F72BF7F003B86F5 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445082F72BF7F003B86F5 /* AppState.swift */; };
 		5184451A2F72BF7F003B86F5 /* Component.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5184450B2F72BF7F003B86F5 /* Component.swift */; };
 		5184451B2F72BF7F003B86F5 /* RFPlannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445162F72BF7F003B86F5 /* RFPlannerView.swift */; };
@@ -21,18 +22,15 @@
 		518445242F72BF7F003B86F5 /* RFData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445152F72BF7F003B86F5 /* RFData.swift */; };
 		518445252F72BF7F003B86F5 /* AudioSignalFlowTrainerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445092F72BF7F003B86F5 /* AudioSignalFlowTrainerApp.swift */; };
 		518445262F72BF7F003B86F5 /* ExerciseBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5184450F2F72BF7F003B86F5 /* ExerciseBuilderView.swift */; };
-		518445272F72BF7F003B86F5 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5184450D2F72BF7F003B86F5 /* ContentView.swift */; };
-		51E852852F72CAED00AF1B8B /* ComponentPreviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51E852842F72CAED00AF1B8B /* ComponentPreviews.swift */; };
-		51E852872F72CCEC00AF1B8B /* AppState+Preview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51E852862F72CCEC00AF1B8B /* AppState+Preview.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		5131C8812F72E6E000C5E043 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		518445082F72BF7F003B86F5 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppState.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/AppState.swift"; sourceTree = "<absolute>"; };
 		518445092F72BF7F003B86F5 /* AudioSignalFlowTrainerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AudioSignalFlowTrainerApp.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/AudioSignalFlowTrainerApp.swift"; sourceTree = "<absolute>"; };
 		5184450A2F72BF7F003B86F5 /* CanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CanvasView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/CanvasView.swift"; sourceTree = "<absolute>"; };
 		5184450B2F72BF7F003B86F5 /* Component.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Component.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Models/Component.swift"; sourceTree = "<absolute>"; };
 		5184450C2F72BF7F003B86F5 /* ComponentData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ComponentData.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Models/ComponentData.swift"; sourceTree = "<absolute>"; };
-		5184450D2F72BF7F003B86F5 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ContentView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/ContentView.swift"; sourceTree = "<absolute>"; };
 		5184450E2F72BF7F003B86F5 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Exercise.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Models/Exercise.swift"; sourceTree = "<absolute>"; };
 		5184450F2F72BF7F003B86F5 /* ExerciseBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExerciseBuilderView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/ExerciseBuilderView.swift"; sourceTree = "<absolute>"; };
 		518445102F72BF7F003B86F5 /* ExerciseData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExerciseData.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Models/ExerciseData.swift"; sourceTree = "<absolute>"; };
@@ -43,8 +41,6 @@
 		518445162F72BF7F003B86F5 /* RFPlannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RFPlannerView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/RFPlannerView.swift"; sourceTree = "<absolute>"; };
 		518445172F72BF7F003B86F5 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SidebarView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/SidebarView.swift"; sourceTree = "<absolute>"; };
 		5190CFC72F72BC8400D14744 /* Signal Flow App V3.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Signal Flow App V3.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		51E852842F72CAED00AF1B8B /* ComponentPreviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentPreviews.swift; sourceTree = "<group>"; };
-		51E852862F72CCEC00AF1B8B /* AppState+Preview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Preview.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -91,7 +87,7 @@
 				5184450C2F72BF7F003B86F5 /* ComponentData.swift */,
 				518445102F72BF7F003B86F5 /* ExerciseData.swift */,
 				518445152F72BF7F003B86F5 /* RFData.swift */,
-				5184450D2F72BF7F003B86F5 /* ContentView.swift */,
+				5131C8812F72E6E000C5E043 /* ContentView.swift */,
 				5184450A2F72BF7F003B86F5 /* CanvasView.swift */,
 				5184450F2F72BF7F003B86F5 /* ExerciseBuilderView.swift */,
 				518445112F72BF7F003B86F5 /* ExercisePanelView.swift */,
@@ -99,8 +95,6 @@
 				518445132F72BF7F003B86F5 /* NodeView.swift */,
 				518445162F72BF7F003B86F5 /* RFPlannerView.swift */,
 				518445172F72BF7F003B86F5 /* SidebarView.swift */,
-				51E852842F72CAED00AF1B8B /* ComponentPreviews.swift */,
-				51E852862F72CCEC00AF1B8B /* AppState+Preview.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -197,13 +191,11 @@
 				518445202F72BF7F003B86F5 /* InspectorView.swift in Sources */,
 				518445212F72BF7F003B86F5 /* ExerciseData.swift in Sources */,
 				518445222F72BF7F003B86F5 /* NodeView.swift in Sources */,
-				51E852852F72CAED00AF1B8B /* ComponentPreviews.swift in Sources */,
 				518445232F72BF7F003B86F5 /* Exercise.swift in Sources */,
 				518445242F72BF7F003B86F5 /* RFData.swift in Sources */,
-				51E852872F72CCEC00AF1B8B /* AppState+Preview.swift in Sources */,
+				5131C8822F72E6E000C5E043 /* ContentView.swift in Sources */,
 				518445252F72BF7F003B86F5 /* AudioSignalFlowTrainerApp.swift in Sources */,
 				518445262F72BF7F003B86F5 /* ExerciseBuilderView.swift in Sources */,
-				518445272F72BF7F003B86F5 /* ContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
