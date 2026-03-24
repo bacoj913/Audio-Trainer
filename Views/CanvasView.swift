@@ -17,7 +17,7 @@ struct CanvasView: View {
                 // ── Canvas background — handles pan drag ──
                 Color(nsColor: .textBackgroundColor)
                     .gesture(
-                        DragGesture(minimumDistance: 0)
+                        DragGesture(minimumDistance: 4)
                             .onChanged { value in
                                 if appState.connectingFromId != nil {
                                     appState.cancelConnecting()
@@ -37,8 +37,9 @@ struct CanvasView: View {
                 // ── Scaled & panned canvas content ──
                 ZStack(alignment: .topLeading) {
 
-                    // Dot grid
+                    // Dot grid — no hit testing so pan gesture on background fires through
                     canvasDotGrid
+                        .allowsHitTesting(false)
 
                     // Empty state hint
                     if appState.instances.isEmpty {
@@ -51,6 +52,7 @@ struct CanvasView: View {
                                 .foregroundColor(.secondary.opacity(0.4))
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .allowsHitTesting(false)
                     }
 
                     // Bezier connection curves
