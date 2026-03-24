@@ -62,16 +62,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		5190CFBE2F72BC8400D14744 = {
+		5131C89F2F72F6DD00C5E043 /* Data */ = {
 			isa = PBXGroup;
 			children = (
-				5190CFC92F72BC8400D14744 /* Signal Flow App V3 */,
-				5190CFC82F72BC8400D14744 /* Products */,
-				5131C8832F72F20200C5E043 /* Component.swift */,
 				5131C8842F72F20200C5E043 /* ComponentData.swift */,
-				5131C8852F72F20200C5E043 /* Exercise.swift */,
 				5131C8862F72F20200C5E043 /* ExerciseData.swift */,
 				5131C8872F72F20200C5E043 /* RFData.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		5131C8A02F72F6F500C5E043 /* Views */ = {
+			isa = PBXGroup;
+			children = (
 				5131C8812F72E6E000C5E043 /* ContentView.swift */,
 				5131C88D2F72F23700C5E043 /* CanvasView.swift */,
 				5131C88E2F72F23700C5E043 /* ExerciseBuilderView.swift */,
@@ -80,6 +83,19 @@
 				5131C8912F72F23700C5E043 /* NodeView.swift */,
 				5131C8922F72F23700C5E043 /* RFPlannerView.swift */,
 				5131C8932F72F23700C5E043 /* SidebarView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		5190CFBE2F72BC8400D14744 = {
+			isa = PBXGroup;
+			children = (
+				5190CFC92F72BC8400D14744 /* Signal Flow App V3 */,
+				5190CFC82F72BC8400D14744 /* Products */,
+				5131C8832F72F20200C5E043 /* Component.swift */,
+				5131C8852F72F20200C5E043 /* Exercise.swift */,
+				5131C89F2F72F6DD00C5E043 /* Data */,
+				5131C8A02F72F6F500C5E043 /* Views */,
 				5131C8942F72F23700C5E043 /* AppState.swift */,
 				5131C8952F72F23700C5E043 /* AudioSignalFlowTrainerApp.swift */,
 			);
