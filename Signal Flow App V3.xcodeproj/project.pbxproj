@@ -8,57 +8,44 @@
 
 /* Begin PBXBuildFile section */
 		5131C8822F72E6E000C5E043 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8812F72E6E000C5E043 /* ContentView.swift */; };
-		518445182F72BF7F003B86F5 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445082F72BF7F003B86F5 /* AppState.swift */; };
-		5184451A2F72BF7F003B86F5 /* Component.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5184450B2F72BF7F003B86F5 /* Component.swift */; };
-		5184451B2F72BF7F003B86F5 /* RFPlannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445162F72BF7F003B86F5 /* RFPlannerView.swift */; };
-		5184451C2F72BF7F003B86F5 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445172F72BF7F003B86F5 /* SidebarView.swift */; };
-		5184451D2F72BF7F003B86F5 /* CanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5184450A2F72BF7F003B86F5 /* CanvasView.swift */; };
-		5184451E2F72BF7F003B86F5 /* ComponentData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5184450C2F72BF7F003B86F5 /* ComponentData.swift */; };
-		5184451F2F72BF7F003B86F5 /* ExercisePanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445112F72BF7F003B86F5 /* ExercisePanelView.swift */; };
-		518445202F72BF7F003B86F5 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445122F72BF7F003B86F5 /* InspectorView.swift */; };
-		518445212F72BF7F003B86F5 /* ExerciseData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445102F72BF7F003B86F5 /* ExerciseData.swift */; };
-		518445222F72BF7F003B86F5 /* NodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445132F72BF7F003B86F5 /* NodeView.swift */; };
-		518445232F72BF7F003B86F5 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5184450E2F72BF7F003B86F5 /* Exercise.swift */; };
-		518445242F72BF7F003B86F5 /* RFData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445152F72BF7F003B86F5 /* RFData.swift */; };
-		518445252F72BF7F003B86F5 /* AudioSignalFlowTrainerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518445092F72BF7F003B86F5 /* AudioSignalFlowTrainerApp.swift */; };
-		518445262F72BF7F003B86F5 /* ExerciseBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5184450F2F72BF7F003B86F5 /* ExerciseBuilderView.swift */; };
+		5131C8882F72F20200C5E043 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8852F72F20200C5E043 /* Exercise.swift */; };
+		5131C8892F72F20200C5E043 /* ExerciseData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8862F72F20200C5E043 /* ExerciseData.swift */; };
+		5131C88A2F72F20200C5E043 /* RFData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8872F72F20200C5E043 /* RFData.swift */; };
+		5131C88B2F72F20200C5E043 /* Component.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8832F72F20200C5E043 /* Component.swift */; };
+		5131C88C2F72F20200C5E043 /* ComponentData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8842F72F20200C5E043 /* ComponentData.swift */; };
+		5131C8962F72F23700C5E043 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8902F72F23700C5E043 /* InspectorView.swift */; };
+		5131C8972F72F23700C5E043 /* NodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8912F72F23700C5E043 /* NodeView.swift */; };
+		5131C8982F72F23700C5E043 /* RFPlannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8922F72F23700C5E043 /* RFPlannerView.swift */; };
+		5131C8992F72F23700C5E043 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8932F72F23700C5E043 /* SidebarView.swift */; };
+		5131C89A2F72F23700C5E043 /* ExercisePanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C88F2F72F23700C5E043 /* ExercisePanelView.swift */; };
+		5131C89B2F72F23700C5E043 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8942F72F23700C5E043 /* AppState.swift */; };
+		5131C89C2F72F23700C5E043 /* AudioSignalFlowTrainerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8952F72F23700C5E043 /* AudioSignalFlowTrainerApp.swift */; };
+		5131C89D2F72F23700C5E043 /* CanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C88D2F72F23700C5E043 /* CanvasView.swift */; };
+		5131C89E2F72F23700C5E043 /* ExerciseBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C88E2F72F23700C5E043 /* ExerciseBuilderView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		5131C8812F72E6E000C5E043 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		518445082F72BF7F003B86F5 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppState.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/AppState.swift"; sourceTree = "<absolute>"; };
-		518445092F72BF7F003B86F5 /* AudioSignalFlowTrainerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AudioSignalFlowTrainerApp.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/AudioSignalFlowTrainerApp.swift"; sourceTree = "<absolute>"; };
-		5184450A2F72BF7F003B86F5 /* CanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CanvasView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/CanvasView.swift"; sourceTree = "<absolute>"; };
-		5184450B2F72BF7F003B86F5 /* Component.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Component.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Models/Component.swift"; sourceTree = "<absolute>"; };
-		5184450C2F72BF7F003B86F5 /* ComponentData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ComponentData.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Models/ComponentData.swift"; sourceTree = "<absolute>"; };
-		5184450E2F72BF7F003B86F5 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Exercise.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Models/Exercise.swift"; sourceTree = "<absolute>"; };
-		5184450F2F72BF7F003B86F5 /* ExerciseBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExerciseBuilderView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/ExerciseBuilderView.swift"; sourceTree = "<absolute>"; };
-		518445102F72BF7F003B86F5 /* ExerciseData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExerciseData.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Models/ExerciseData.swift"; sourceTree = "<absolute>"; };
-		518445112F72BF7F003B86F5 /* ExercisePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExercisePanelView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/ExercisePanelView.swift"; sourceTree = "<absolute>"; };
-		518445122F72BF7F003B86F5 /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InspectorView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/InspectorView.swift"; sourceTree = "<absolute>"; };
-		518445132F72BF7F003B86F5 /* NodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NodeView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/NodeView.swift"; sourceTree = "<absolute>"; };
-		518445152F72BF7F003B86F5 /* RFData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RFData.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Models/RFData.swift"; sourceTree = "<absolute>"; };
-		518445162F72BF7F003B86F5 /* RFPlannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RFPlannerView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/RFPlannerView.swift"; sourceTree = "<absolute>"; };
-		518445172F72BF7F003B86F5 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SidebarView.swift; path = "/Users/jmpegher/Documents/Claude-Test-App/AudioSignalFlowTrainer-Swift/Views/SidebarView.swift"; sourceTree = "<absolute>"; };
+		5131C8832F72F20200C5E043 /* Component.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Component.swift; sourceTree = "<group>"; };
+		5131C8842F72F20200C5E043 /* ComponentData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentData.swift; sourceTree = "<group>"; };
+		5131C8852F72F20200C5E043 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
+		5131C8862F72F20200C5E043 /* ExerciseData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseData.swift; sourceTree = "<group>"; };
+		5131C8872F72F20200C5E043 /* RFData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFData.swift; sourceTree = "<group>"; };
+		5131C88D2F72F23700C5E043 /* CanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasView.swift; sourceTree = "<group>"; };
+		5131C88E2F72F23700C5E043 /* ExerciseBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseBuilderView.swift; sourceTree = "<group>"; };
+		5131C88F2F72F23700C5E043 /* ExercisePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePanelView.swift; sourceTree = "<group>"; };
+		5131C8902F72F23700C5E043 /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
+		5131C8912F72F23700C5E043 /* NodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeView.swift; sourceTree = "<group>"; };
+		5131C8922F72F23700C5E043 /* RFPlannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFPlannerView.swift; sourceTree = "<group>"; };
+		5131C8932F72F23700C5E043 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		5131C8942F72F23700C5E043 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		5131C8952F72F23700C5E043 /* AudioSignalFlowTrainerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSignalFlowTrainerApp.swift; sourceTree = "<group>"; };
 		5190CFC72F72BC8400D14744 /* Signal Flow App V3.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Signal Flow App V3.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		5131C8802F72E47900C5E043 /* Exceptions for "Signal Flow App V3" folder in "Signal Flow App V3" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"Signal-Flow-App-V3-Info.plist",
-			);
-			target = 5190CFC62F72BC8400D14744 /* Signal Flow App V3 */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5190CFC92F72BC8400D14744 /* Signal Flow App V3 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				5131C8802F72E47900C5E043 /* Exceptions for "Signal Flow App V3" folder in "Signal Flow App V3" target */,
-			);
 			path = "Signal Flow App V3";
 			sourceTree = "<group>";
 		};
@@ -80,21 +67,21 @@
 			children = (
 				5190CFC92F72BC8400D14744 /* Signal Flow App V3 */,
 				5190CFC82F72BC8400D14744 /* Products */,
-				518445082F72BF7F003B86F5 /* AppState.swift */,
-				518445092F72BF7F003B86F5 /* AudioSignalFlowTrainerApp.swift */,
-				5184450B2F72BF7F003B86F5 /* Component.swift */,
-				5184450E2F72BF7F003B86F5 /* Exercise.swift */,
-				5184450C2F72BF7F003B86F5 /* ComponentData.swift */,
-				518445102F72BF7F003B86F5 /* ExerciseData.swift */,
-				518445152F72BF7F003B86F5 /* RFData.swift */,
+				5131C8832F72F20200C5E043 /* Component.swift */,
+				5131C8842F72F20200C5E043 /* ComponentData.swift */,
+				5131C8852F72F20200C5E043 /* Exercise.swift */,
+				5131C8862F72F20200C5E043 /* ExerciseData.swift */,
+				5131C8872F72F20200C5E043 /* RFData.swift */,
 				5131C8812F72E6E000C5E043 /* ContentView.swift */,
-				5184450A2F72BF7F003B86F5 /* CanvasView.swift */,
-				5184450F2F72BF7F003B86F5 /* ExerciseBuilderView.swift */,
-				518445112F72BF7F003B86F5 /* ExercisePanelView.swift */,
-				518445122F72BF7F003B86F5 /* InspectorView.swift */,
-				518445132F72BF7F003B86F5 /* NodeView.swift */,
-				518445162F72BF7F003B86F5 /* RFPlannerView.swift */,
-				518445172F72BF7F003B86F5 /* SidebarView.swift */,
+				5131C88D2F72F23700C5E043 /* CanvasView.swift */,
+				5131C88E2F72F23700C5E043 /* ExerciseBuilderView.swift */,
+				5131C88F2F72F23700C5E043 /* ExercisePanelView.swift */,
+				5131C8902F72F23700C5E043 /* InspectorView.swift */,
+				5131C8912F72F23700C5E043 /* NodeView.swift */,
+				5131C8922F72F23700C5E043 /* RFPlannerView.swift */,
+				5131C8932F72F23700C5E043 /* SidebarView.swift */,
+				5131C8942F72F23700C5E043 /* AppState.swift */,
+				5131C8952F72F23700C5E043 /* AudioSignalFlowTrainerApp.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -181,21 +168,21 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				518445182F72BF7F003B86F5 /* AppState.swift in Sources */,
-				5184451A2F72BF7F003B86F5 /* Component.swift in Sources */,
-				5184451B2F72BF7F003B86F5 /* RFPlannerView.swift in Sources */,
-				5184451C2F72BF7F003B86F5 /* SidebarView.swift in Sources */,
-				5184451D2F72BF7F003B86F5 /* CanvasView.swift in Sources */,
-				5184451E2F72BF7F003B86F5 /* ComponentData.swift in Sources */,
-				5184451F2F72BF7F003B86F5 /* ExercisePanelView.swift in Sources */,
-				518445202F72BF7F003B86F5 /* InspectorView.swift in Sources */,
-				518445212F72BF7F003B86F5 /* ExerciseData.swift in Sources */,
-				518445222F72BF7F003B86F5 /* NodeView.swift in Sources */,
-				518445232F72BF7F003B86F5 /* Exercise.swift in Sources */,
-				518445242F72BF7F003B86F5 /* RFData.swift in Sources */,
+				5131C8882F72F20200C5E043 /* Exercise.swift in Sources */,
+				5131C8892F72F20200C5E043 /* ExerciseData.swift in Sources */,
+				5131C88A2F72F20200C5E043 /* RFData.swift in Sources */,
+				5131C88B2F72F20200C5E043 /* Component.swift in Sources */,
+				5131C8962F72F23700C5E043 /* InspectorView.swift in Sources */,
+				5131C8972F72F23700C5E043 /* NodeView.swift in Sources */,
+				5131C8982F72F23700C5E043 /* RFPlannerView.swift in Sources */,
+				5131C8992F72F23700C5E043 /* SidebarView.swift in Sources */,
+				5131C89A2F72F23700C5E043 /* ExercisePanelView.swift in Sources */,
+				5131C89B2F72F23700C5E043 /* AppState.swift in Sources */,
+				5131C89C2F72F23700C5E043 /* AudioSignalFlowTrainerApp.swift in Sources */,
+				5131C89D2F72F23700C5E043 /* CanvasView.swift in Sources */,
+				5131C89E2F72F23700C5E043 /* ExerciseBuilderView.swift in Sources */,
+				5131C88C2F72F20200C5E043 /* ComponentData.swift in Sources */,
 				5131C8822F72E6E000C5E043 /* ContentView.swift in Sources */,
-				518445252F72BF7F003B86F5 /* AudioSignalFlowTrainerApp.swift in Sources */,
-				518445262F72BF7F003B86F5 /* ExerciseBuilderView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
