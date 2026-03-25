@@ -633,6 +633,8 @@ enum Components {
                           "Out 4A (BNC)", "Out 4B (BNC)"]),
             desc: "Active 4-way antenna distributor with DC bias", level: "RF Distribution",
             rackUnits: 1),
+        // ── Intercom ─────────────────────────────────────────
+        // TODO: Add Intercom Devices
     ]
 }
 #if DEBUG

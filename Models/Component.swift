@@ -47,12 +47,15 @@ let categoryOrder: [String] = [
 extension Color {
     static func signalTypeColor(_ type: String) -> Color {
         switch type {
-        case "mic":        return Color(red: 0.20, green: 0.78, blue: 0.35) // green
-        case "line":       return Color(red: 0.00, green: 0.48, blue: 1.00) // blue
-        case "instrument": return Color(red: 1.00, green: 0.62, blue: 0.04) // orange
-        case "speaker":    return Color(red: 1.00, green: 0.27, blue: 0.23) // red
-        case "rf":         return Color(red: 0.00, green: 0.73, blue: 0.91) // cyan
-        default:           return Color(red: 0.55, green: 0.55, blue: 0.58) // gray
+        case "mic":        return Color(.systemRed)
+        case "line":       return Color(.systemRed)
+        case "instrument": return Color(.systemPink)
+        case "speaker":    return Color(.black)
+        case "network":    return Color(.systemGreen)
+        case "antenna":    return Color(.systemGray)
+        case "madi":       return Color(.systemPurple)
+        case "fiber":      return Color(.systemOrange)
+        default:           return Color(.systemGray)
         }
     }
 }
@@ -78,6 +81,48 @@ extension Color {
         case "Intercom":     return Color(.systemTeal) // dark blue
         default:             return Color.gray
         }
+    }
+}
+
+// MARK: - Auto Text Contrast
+extension Color {
+    func nsColor(for appearance: NSAppearance? = NSApp.effectiveAppearance) -> NSColor {
+        let base = NSColor(self)
+
+        guard let appearance else { return base }
+
+        var resolved = base
+        appearance.performAsCurrentDrawingAppearance {
+            resolved = NSColor(self)
+        }
+        return resolved
+    }
+
+    var wcagContrastingTextColor: Color {
+        let resolved = nsColor()
+
+        guard let rgb = resolved.usingColorSpace(.deviceRGB) else {
+            return .white
+        }
+
+        func linearize(_ c: CGFloat) -> CGFloat {
+            if c <= 0.04045 {
+                return c / 12.92
+            } else {
+                return pow((c + 0.055) / 1.055, 2.4)
+            }
+        }
+
+        let r = linearize(rgb.redComponent)
+        let g = linearize(rgb.greenComponent)
+        let b = linearize(rgb.blueComponent)
+
+        let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+        let whiteContrast = (1.0 + 0.05) / (luminance + 0.05)
+        let blackContrast = (luminance + 0.05) / 0.05
+
+        return whiteContrast > blackContrast ? .white : .black
     }
 }
 // MARK: - Preview Helpers

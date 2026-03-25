@@ -19,40 +19,42 @@ extension CGRect {
 }
 
 /// Evenly distribute N ports along a card edge, with a margin from top/bottom.
+/// - Parameters:
+///   - idx: Zero-based port index.
+///   - total: Number of ports on that edge.
+///   - height: Available edge height.
+/// - Returns: Y position for a given port.
 func evenPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
     guard total > 0 else { return height / 2 }
     if total == 1 { return height / 2 }
     let margin: CGFloat = 18
     return margin + CGFloat(idx) * (height - 2 * margin) / CGFloat(total - 1)
 }
+
+/// Stacks body ports from top to bottom, with a margin from the top.
+/// - Parameters:
+///   - idx: Zero-based port index.
+///   - total: Total ports in the stack. Currently unused.
+///   - height: Full node height. Currently unused.
+/// - Returns: Y position for a given port.
 func bodyPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
     let topReserved: CGFloat = 96
-    let bottomPadding: CGFloat = 10
     let bodyTopInset: CGFloat = 15
-    let bodyBottomInset: CGFloat = 5
-
-    let usableTop = topReserved + bodyTopInset
-    let usableBottom = height - bottomPadding - bodyBottomInset
-    let usableHeight = max(1, usableBottom - usableTop)
-
-    guard total > 0 else { return usableTop + usableHeight / 2 }
-
-    if total == 1 {
-        return usableTop + usableHeight / 2
-    }
-
-    let step = usableHeight / CGFloat(total - 1)
-    return usableTop + step * CGFloat(idx)
+    let portSpacing: CGFloat = 20
+    
+    return topReserved + bodyTopInset + CGFloat(idx) * portSpacing
 }
 
+/// Calculates standard node height
+/// - Parameter comp: Component whos ports determine height.
+/// - Returns: Total node height.
 func standardNodeHeight(for comp: Component) -> CGFloat {
-    let topReserved: CGFloat = 96
-    let bottomPadding: CGFloat = 10
-    let minBodyHeight: CGFloat = 24
-    let portSpacing: CGFloat = 20
-    let bodyTopInset: CGFloat = 12
-    let bodyBottomInset: CGFloat = 5
-
+    let topReserved: CGFloat = 96 // Space for header + component info before ports begin.
+    let bottomPadding: CGFloat = 10 // Bottom breathing room below the port area.
+    let minBodyHeight: CGFloat = 24 // Minimum height for the lower body/port section.
+    let portSpacing: CGFloat = 20 // Vertical spacing between consecutive ports.
+    let bodyTopInset: CGFloat = 10 // Space between the info section and the first port.
+    let bodyBottomInset: CGFloat = 10 // Space between the last port and the bottom of the node.
     let portCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
 
     if portCount <= 1 {
@@ -64,10 +66,18 @@ func standardNodeHeight(for comp: Component) -> CGFloat {
 
     return topReserved + bodyHeight + bottomPadding
 }
+/// Estimated text width for layout sizing without exact text measurement.
+/// - Parameters:
+///   - text: Text to estimate.
+///   - fontSize: Font size used for text.
+/// - Returns: Approximate text width.
 func estimatedTextWidth(_ text: String, fontSize: CGFloat) -> CGFloat {
     CGFloat(text.count) * fontSize * 0.58
 }
 
+/// Calculates standard node width to determine if node should widen to fit port labels.
+/// - Parameter comp: Component whos port labels determine width.
+/// - Returns: Node width.
 func standardNodeWidth(for comp: Component) -> CGFloat {
     let baseWidth: CGFloat = 168
     let innerPadding: CGFloat = 18
@@ -83,10 +93,17 @@ func standardNodeWidth(for comp: Component) -> CGFloat {
 
     return max(baseWidth, totalLabelWidth)
 }
+
+
+
+// TODO: Add Ruleset for Intercom devices
+
 // MARK: - Constants
 extension NodeView {
-    static let width:      CGFloat = 168
-    static let portRadius: CGFloat = 7
+    static let width: CGFloat = 168
+    static let portDotSize: CGFloat = 10
+    static let portHitSize: CGFloat = 28
+    static let portXMarkSize: CGFloat = 5
 }
 
 // MARK: - Node View
@@ -119,13 +136,16 @@ struct StandardNodeView: View {
         VStack(alignment: .leading, spacing: 0) {
 
             VStack(alignment: .leading, spacing: 4) {
-                ZStack { // Header row
+                ZStack { // Equipment Header
                     HStack(spacing: 6) {
                         ComponentIcon(name: comp.iconName)
                             .frame(width: 18, height: 18)
+                            .foregroundColor(Color.categoryColor(comp.category).wcagContrastingTextColor)
 
                         Text(comp.name)
                             .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color.categoryColor(comp.category).wcagContrastingTextColor)
+                            .lineLimit(2)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
 
@@ -142,14 +162,14 @@ struct StandardNodeView: View {
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 6)
-                    .background {
+                    .background { //Background color for Equipment Header
                         RoundedRectangle(cornerRadius: 9)
                             .fill(Color.categoryColor(comp.category))
                     }
                     
                 }
-
-                if comp.manufacturer != "Generic" {
+// FIXME: Remove comp.manufacturer
+                if comp.manufacturer != "Generic" { // Equipment Manufacturer
                     Text(comp.manufacturer)
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -203,7 +223,7 @@ struct StandardNodeView: View {
                         lineWidth: appState.connectingFromId == instance.id ? 2 : 1)
         )
         .shadow(color: .black.opacity(isHovered ? 0.14 : 0.08), radius: isHovered ? 10 : 5, x: 0, y: isHovered ? 4 : 2)
-        // ── Per-port interactive dots on card edges ──
+// MARK: - Per-port interactive dots on card edges
         .overlay {
             GeometryReader { geo in
                 // Input dots — left edge
@@ -235,9 +255,6 @@ struct StandardNodeView: View {
                 }
             }
             .onHover { isHovered = $0 }
-            // highPriorityGesture ensures drag wins over child button taps.
-            // minimumDistance:0 so any movement begins the drag immediately.
-            // Port-dot taps still work because taps have zero movement.
             .contentShape(RoundedRectangle(cornerRadius: 9))
             .gesture(
                 DragGesture(minimumDistance: 4)
@@ -314,20 +331,19 @@ struct StandardNodeView: View {
             ZStack {
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 28, height: 28)
-                
+                    .frame(width: NodeView.portHitSize, height: NodeView.portHitSize)
                 Circle()
                     .fill(
                         isConnected && side == "in" && !isConnecting
                         ? Color.red.opacity(0.75)
                         : color
                     )
-                    .frame(width: 14, height: 14)
-                    .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                    .frame(width: NodeView.portDotSize, height: NodeView.portDotSize)
+                    .overlay(Circle().stroke(Color.white, lineWidth: 1.25))
                     .overlay {
                         if isConnected && side == "in" && !isConnecting {
                             Image(systemName: "xmark")
-                                .font(.system(size: 6, weight: .black))
+                                .font(.system(size: NodeView.portXMarkSize, weight: .black))
                                 .foregroundColor(.white)
                         }
                     }
@@ -554,11 +570,11 @@ struct StandardNodeView: View {
     // MARK: - SF Symbol icon wrapper
     struct ComponentIcon: View {
         let name: String
+        
         var body: some View {
             Image(systemName: sfSymbol(for: name))
                 .resizable()
                 .scaledToFit()
-                .foregroundColor(.primary.opacity(0.7))
         }
         
         func sfSymbol(for iconName: String) -> String {

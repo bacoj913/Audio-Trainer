@@ -36,9 +36,9 @@ struct FreePanelView: View {
                     howToStep(n: 5, text: "Double-click palette items to add at default position")
                 }
             }
-
+//FIXME: Add all signal types found in signal colors
             // Signal levels legend
-            InspectorSection(title: "SIGNAL LEVELS") {
+            InspectorSection(title: "SIGNAL TYPES") {
                 VStack(spacing: 4) {
                     LevelRow(color: .green,  label: "Mic Level",   tag: "~1 mV")
                     LevelRow(color: .orange, label: "Instrument",  tag: "~100 mV")
