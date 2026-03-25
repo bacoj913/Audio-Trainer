@@ -14,8 +14,12 @@ struct CanvasView: View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
 
-                // ── Canvas background — handles pan drag ──
+                // Background only
                 Color(nsColor: .textBackgroundColor)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        appState.cancelConnecting()
+                    }
                     .gesture(
                         DragGesture(minimumDistance: 4)
                             .onChanged { value in
@@ -23,6 +27,7 @@ struct CanvasView: View {
                                     appState.cancelConnecting()
                                     return
                                 }
+
                                 appState.canvasOffset = CGSize(
                                     width: panStartOffset.width + value.translation.width,
                                     height: panStartOffset.height + value.translation.height
@@ -32,16 +37,12 @@ struct CanvasView: View {
                                 panStartOffset = appState.canvasOffset
                             }
                     )
-                    .onTapGesture { appState.cancelConnecting() }
-
-                // ── Scaled & panned canvas content ──
+                // Scaled & panned canvas content
                 ZStack(alignment: .topLeading) {
 
-                    // Dot grid — no hit testing so pan gesture on background fires through
                     canvasDotGrid
                         .allowsHitTesting(false)
 
-                    // Empty state hint
                     if appState.instances.isEmpty {
                         VStack(spacing: 10) {
                             Image(systemName: "slider.horizontal.3")
@@ -55,30 +56,30 @@ struct CanvasView: View {
                         .allowsHitTesting(false)
                     }
 
-                    // Bezier connection curves
                     Canvas { ctx, _ in
                         drawConnections(ctx: ctx)
                         if let fromId = appState.connectingFromId,
-                           let src = appState.portCenter(for: fromId,
-                                                         portIndex: appState.connectingFromPortIndex,
-                                                         side: "out") {
+                           let src = appState.portCenter(
+                            for: fromId,
+                            portIndex: appState.connectingFromPortIndex,
+                            side: "out"
+                           ) {
                             drawPreview(ctx: ctx, from: src, to: mousePos)
                         }
                     }
                     .allowsHitTesting(false)
 
-                    // Connection delete hit areas
                     ForEach(appState.connections) { conn in
                         ConnectionHitArea(connection: conn)
                     }
 
-                    // Component nodes
                     ForEach(appState.instances) { instance in
                         NodeView(instance: instance)
                             .position(
                                 x: instance.position.x + nodeHalfWidth(for: instance),
                                 y: instance.position.y + 30
                             )
+                            .zIndex(1)
                     }
                 }
                 .scaleEffect(appState.canvasScale, anchor: .topLeading)
@@ -86,7 +87,6 @@ struct CanvasView: View {
                 .coordinateSpace(name: "canvas")
             }
             .contentShape(Rectangle())
-            // Track mouse for connection preview line (convert screen → canvas coords)
             .onContinuousHover { phase in
                 if case .active(let loc) = phase {
                     mousePos = CGPoint(
@@ -95,30 +95,29 @@ struct CanvasView: View {
                     )
                 }
             }
-            // Pinch to zoom (trackpad)
-            .gesture(
+            .simultaneousGesture(
                 MagnifyGesture()
                     .onChanged { value in
-                        appState.canvasScale = max(0.25, min(4.0,
-                            scaleAtGestureStart * value.magnification))
+                        appState.canvasScale = max(
+                            0.25,
+                            min(4.0, scaleAtGestureStart * value.magnification)
+                        )
                     }
                     .onEnded { _ in
                         scaleAtGestureStart = appState.canvasScale
                     }
             )
-            // Collect port anchor positions reported by PortEdgeDot views
             .onPreferenceChange(PortAnchorPref.self) { positions in
                 DispatchQueue.main.async {
                     appState.activeTab.portPositions.merge(positions) { $1 }
                 }
             }
-            // Drop target for palette items
             .onDrop(of: [UTType.plainText], isTargeted: $isDragTarget) { providers, location in
                 providers.first?.loadItem(forTypeIdentifier: UTType.plainText.identifier) { data, _ in
                     guard let data = data as? Data,
                           let typeId = String(data: data, encoding: .utf8) else { return }
+
                     DispatchQueue.main.async {
-                        // Convert drop location from screen to canvas coordinates
                         let canvasX = (location.x - appState.canvasOffset.width) / appState.canvasScale
                         let canvasY = (location.y - appState.canvasOffset.height) / appState.canvasScale
                         let pos = CGPoint(
@@ -138,7 +137,6 @@ struct CanvasView: View {
             )
         }
         .onAppear {
-            // Sync panStartOffset on appear in case scale/offset was pre-set
             panStartOffset = appState.canvasOffset
             scaleAtGestureStart = appState.canvasScale
         }
@@ -254,17 +252,22 @@ struct ConnectionHitArea: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
-        Color.clear
-            .contentShape(
-                ConnectionShape(
-                    src: appState.portCenter(for: connection.fromId,
-                                             portIndex: connection.fromPortIndex,
-                                             side: "out"),
-                    dst: appState.portCenter(for: connection.toId,
-                                             portIndex: connection.toPortIndex,
-                                             side: "in")
-                )
+        let shape = ConnectionShape(
+            src: appState.portCenter(
+                for: connection.fromId,
+                portIndex: connection.fromPortIndex,
+                side: "out"
+            ),
+            dst: appState.portCenter(
+                for: connection.toId,
+                portIndex: connection.toPortIndex,
+                side: "in"
             )
+        )
+
+        shape
+            .stroke(Color.clear, lineWidth: 12)
+            .contentShape(shape)
             .contextMenu {
                 Button(role: .destructive) {
                     appState.removeConnection(connection.id)
@@ -272,9 +275,9 @@ struct ConnectionHitArea: View {
                     Label("Remove Connection", systemImage: "trash")
                 }
             }
-    }
+            .allowsHitTesting(true)
+        }
 }
-
 struct ConnectionShape: Shape {
     let src: CGPoint?
     let dst: CGPoint?
