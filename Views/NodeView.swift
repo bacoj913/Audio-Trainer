@@ -26,7 +26,7 @@ func evenPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
     return margin + CGFloat(idx) * (height - 2 * margin) / CGFloat(total - 1)
 }
 func bodyPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
-    let topReserved: CGFloat = 78
+    let topReserved: CGFloat = 96
     let bottomPadding: CGFloat = 14
     let usableTop = topReserved
     let usableBottom = height - bottomPadding
@@ -42,7 +42,7 @@ func bodyPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
     return usableTop + step * CGFloat(idx + 1)
 }
 func standardNodeHeight(for comp: Component) -> CGFloat {
-    let topReserved: CGFloat = 78
+    let topReserved: CGFloat = 96
     let bottomPadding: CGFloat = 14
     let minBodyHeight: CGFloat = 36
     let portSpacing: CGFloat = 24

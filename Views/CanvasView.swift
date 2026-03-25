@@ -77,7 +77,7 @@ struct CanvasView: View {
                         NodeView(instance: instance)
                             .position(
                                 x: instance.position.x + nodeHalfWidth(for: instance),
-                                y: instance.position.y + 30
+                                y: instance.position.y + nodeHalfHeight(for: instance)
                             )
                             .zIndex(1)
                     }
@@ -120,9 +120,20 @@ struct CanvasView: View {
                     DispatchQueue.main.async {
                         let canvasX = (location.x - appState.canvasOffset.width) / appState.canvasScale
                         let canvasY = (location.y - appState.canvasOffset.height) / appState.canvasScale
+                        let comp = Components.all[typeId]
+                        let droppedHalfHeight: CGFloat = {
+                            if let comp, comp.isRack {
+                                return 30
+                            }
+                            if let comp {
+                                return standardNodeHeight(for: comp) / 2
+                            }
+                            return 30
+                        }()
+
                         let pos = CGPoint(
                             x: max(10, canvasX - NodeView.width / 2),
-                            y: max(10, canvasY - 40)
+                            y: max(10, canvasY - droppedHalfHeight)
                         )
                         appState.addInstance(type: typeId, position: pos)
                     }
@@ -147,7 +158,19 @@ struct CanvasView: View {
         let comp = Components.all[instance.type]
         return comp?.isRack == true ? 100 : NodeView.width / 2
     }
+    private func nodeHalfHeight(for instance: NodeInstance) -> CGFloat {
+        let comp = Components.all[instance.type]
 
+        if comp?.isRack == true {
+            return 30
+        }
+
+        if let comp {
+            return standardNodeHeight(for: comp) / 2
+        }
+
+        return 30
+    }
     // MARK: - Draw connections
     private func drawConnections(ctx: GraphicsContext) {
         for conn in appState.connections {
