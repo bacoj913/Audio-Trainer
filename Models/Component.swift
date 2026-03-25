@@ -125,7 +125,6 @@ extension Color {
         case "MADI":       return Color(.systemTeal)
         case "fiber":      return Color(.systemOrange)
         case "AES":        return Color(.systemPurple)
-        case "AES In":     return Color(.systemPurple)
         case "Dante":      return Color(.systemGreen)
         case "Milan":      return Color(.systemGreen)
         default:           return Color(.systemGray)
