@@ -9,7 +9,73 @@ struct PortInfo {
 
     static let empty = PortInfo(inputs: [], outputs: [])
 }
+// MARK: - Port Group
+struct PortGroup {
+    let connector: String      // "XLR", "AES", "Speakon"
+    let count: Int
+    let signalType: String     // "line", "aes", "speaker"
 
+    func labels(for side: String) -> [String] {
+        guard count > 0 else { return [] }
+
+        let direction = side == "in" ? "In" : "Out"
+        let baseLabel = "\(connector) \(direction)"
+
+        if count == 1 {
+            return [baseLabel]
+        }
+
+        return (1...count).map { "\(baseLabel) \($0)" }
+    }
+
+    var signalTypes: [String] {
+        Array(repeating: signalType, count: count)
+    }
+}
+
+extension PortInfo {
+    init(inputGroups: [PortGroup], outputGroups: [PortGroup]) {
+        self.init(
+            inputs: inputGroups.flatMap { $0.labels(for: "in") },
+            outputs: outputGroups.flatMap { $0.labels(for: "out") }
+        )
+    }
+}
+
+extension Component {
+    init(
+        id: String,
+        name: String,
+        iconName: String,
+        category: String,
+        manufacturer: String,
+        model: String,
+        inputGroups: [PortGroup],
+        outputGroups: [PortGroup],
+        desc: String,
+        level: String,
+        isRack: Bool = false,
+        rackUnits: Int = 0,
+        comingSoon: Bool = false
+    ) {
+        self.init(
+            id: id,
+            name: name,
+            iconName: iconName,
+            category: category,
+            manufacturer: manufacturer,
+            model: model,
+            inputs: inputGroups.flatMap(\.signalTypes),
+            outputs: outputGroups.flatMap(\.signalTypes),
+            ports: PortInfo(inputGroups: inputGroups, outputGroups: outputGroups),
+            desc: desc,
+            level: level,
+            isRack: isRack,
+            rackUnits: rackUnits,
+            comingSoon: comingSoon
+        )
+    }
+}
 // MARK: - Component
 struct Component {
     let id: String
@@ -46,15 +112,22 @@ let categoryOrder: [String] = [
 // MARK: - Signal type colors (for port dots and connection wires)
 extension Color {
     static func signalTypeColor(_ type: String) -> Color {
-        switch type {
+        switch type
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        {
         case "mic":        return Color(.systemRed)
         case "line":       return Color(.systemRed)
         case "instrument": return Color(.systemPink)
         case "speaker":    return Color(.black)
         case "network":    return Color(.systemGreen)
         case "antenna":    return Color(.systemGray)
-        case "madi":       return Color(.systemPurple)
+        case "MADI":       return Color(.systemTeal)
         case "fiber":      return Color(.systemOrange)
+        case "AES":        return Color(.systemPurple)
+        case "AES In":     return Color(.systemPurple)
+        case "Dante":      return Color(.systemGreen)
+        case "Milan":      return Color(.systemGreen)
         default:           return Color(.systemGray)
         }
     }

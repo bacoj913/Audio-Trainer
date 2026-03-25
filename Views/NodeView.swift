@@ -37,34 +37,32 @@ func evenPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
 ///   - total: Total ports in the stack. Currently unused.
 ///   - height: Full node height. Currently unused.
 /// - Returns: Y position for a given port.
-func bodyPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
-    let topReserved: CGFloat = 96
-    let bodyTopInset: CGFloat = 15
-    let portSpacing: CGFloat = 20
-    
-    return topReserved + bodyTopInset + CGFloat(idx) * portSpacing
+func bodyPortY(idx: Int, rowCount _: Int) -> CGFloat {
+    let firstRowY = NodeView.standardTopReserved + NodeView.standardBodyTopInset
+    return firstRowY + CGFloat(idx) * NodeView.standardPortSpacing
 }
-
+// TODO: Fix Distance to blue headphone level thing
 /// Calculates standard node height
 /// - Parameter comp: Component whos ports determine height.
 /// - Returns: Total node height.
 func standardNodeHeight(for comp: Component) -> CGFloat {
-    let topReserved: CGFloat = 96 // Space for header + component info before ports begin.
-    let bottomPadding: CGFloat = 10 // Bottom breathing room below the port area.
-    let minBodyHeight: CGFloat = 24 // Minimum height for the lower body/port section.
-    let portSpacing: CGFloat = 20 // Vertical spacing between consecutive ports.
-    let bodyTopInset: CGFloat = 10 // Space between the info section and the first port.
-    let bodyBottomInset: CGFloat = 10 // Space between the last port and the bottom of the node.
     let portCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
 
     if portCount <= 1 {
-        return topReserved + minBodyHeight + bottomPadding
+        return NodeView.standardTopReserved
+            + NodeView.standardMinBodyHeight
+            + NodeView.standardBottomPadding
     }
 
-    let portsHeight = CGFloat(portCount - 1) * portSpacing
-    let bodyHeight = max(minBodyHeight, bodyTopInset + portsHeight + bodyBottomInset)
+    let portsHeight = CGFloat(portCount - 1) * NodeView.standardPortSpacing
+    let bodyHeight = max(
+        NodeView.standardMinBodyHeight,
+        NodeView.standardBodyTopInset + portsHeight + NodeView.standardBodyBottomInset
+    )
 
-    return topReserved + bodyHeight + bottomPadding
+    return NodeView.standardTopReserved
+        + bodyHeight
+        + NodeView.standardBottomPadding
 }
 /// Estimated text width for layout sizing without exact text measurement.
 /// - Parameters:
@@ -102,8 +100,17 @@ func standardNodeWidth(for comp: Component) -> CGFloat {
 extension NodeView {
     static let width: CGFloat = 168
     static let portDotSize: CGFloat = 10
-    static let portHitSize: CGFloat = 28
+    static let portHitSize: CGFloat = 50
     static let portXMarkSize: CGFloat = 5
+    
+    static let portLabelGap: CGFloat = 10
+    
+    static let standardTopReserved: CGFloat = 96
+    static let standardBodyTopInset: CGFloat = 16
+    static let standardBodyBottomInset: CGFloat = 12
+    static let standardBottomPadding: CGFloat = 10
+    static let standardMinBodyHeight: CGFloat = 24
+    static let standardPortSpacing: CGFloat = 26
 }
 
 // MARK: - Node View
@@ -226,53 +233,65 @@ struct StandardNodeView: View {
 // MARK: - Per-port interactive dots on card edges
         .overlay {
             GeometryReader { geo in
-                // Input dots — left edge
+                let rowCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
+
                 ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, portName in
                     let sigType = comp.inputs.indices.contains(idx)
-                    ? comp.inputs[idx]
-                    : (comp.inputs.first ?? "line")
-                    PortEdgeDot(instance: instance, portIndex: idx, side: "in",
-                                total: comp.ports.inputs.count,
-                                label: portName, signalType: sigType)
+                        ? comp.inputs[idx]
+                        : (comp.inputs.first ?? "line")
+
+                    PortEdgeDot(
+                        instance: instance,
+                        portIndex: idx,
+                        side: "in",
+                        total: comp.ports.inputs.count,
+                        label: portName,
+                        signalType: sigType
+                    )
                     .position(
                         x: 0,
-                        y: bodyPortY(idx: idx, total: comp.ports.inputs.count, height: geo.size.height)
+                        y: bodyPortY(idx: idx, rowCount: rowCount)
                     )
                 }
-                    // Output dots — right edge
-                    ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, portName in
-                        let sigType = comp.outputs.indices.contains(idx)
+
+                ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, portName in
+                    let sigType = comp.outputs.indices.contains(idx)
                         ? comp.outputs[idx]
                         : (comp.outputs.first ?? "line")
-                        PortEdgeDot(instance: instance, portIndex: idx, side: "out",
-                                    total: comp.ports.outputs.count,
-                                    label: portName, signalType: sigType)
-                        .position(
-                            x: geo.size.width,
-                            y: bodyPortY(idx: idx, total: comp.ports.outputs.count, height: geo.size.height)
-                        )
-                    }
+
+                    PortEdgeDot(
+                        instance: instance,
+                        portIndex: idx,
+                        side: "out",
+                        total: comp.ports.outputs.count,
+                        label: portName,
+                        signalType: sigType
+                    )
+                    .position(
+                        x: geo.size.width,
+                        y: bodyPortY(idx: idx, rowCount: rowCount)
+                    )
                 }
             }
-            .onHover { isHovered = $0 }
-            .contentShape(RoundedRectangle(cornerRadius: 9))
-            .gesture(
-                DragGesture(minimumDistance: 4)
-                    .onChanged { value in
-                        guard appState.connectingFromId == nil else { return }
-                        if dragStartPos == nil { dragStartPos = instance.position }
-                        guard let start = dragStartPos else { return }
-                        
-                        let s = appState.canvasScale
-                        instance.position = CGPoint(
-                            x: max(0, start.x + value.translation.width / s),
-                            y: max(0, start.y + value.translation.height / s)
-                        )
-                    }
-                    .onEnded { _ in
-                        dragStartPos = nil
-                    },
-                including: .gesture
+        }
+        .onHover { isHovered = $0 }
+        .contentShape(RoundedRectangle(cornerRadius: 9))
+        .gesture(
+            DragGesture(minimumDistance: 4)
+                .onChanged { value in
+                    guard appState.connectingFromId == nil else { return }
+                    if dragStartPos == nil { dragStartPos = instance.position }
+                    guard let start = dragStartPos else { return }
+                    let s = appState.canvasScale
+                    instance.position = CGPoint(
+                        x: max(0, start.x + value.translation.width / s),
+                        y: max(0, start.y + value.translation.height / s)
+                    )
+                }
+                .onEnded { _ in
+                    dragStartPos = nil
+                },
+            including: .gesture
             )
         }
     }
@@ -322,7 +341,11 @@ struct StandardNodeView: View {
                             .lineLimit(1)
                             .fixedSize()
                             .allowsHitTesting(false)
-                            .offset(x: side == "in" ? 24 : -24)
+                            .offset(
+                                x: side == "in"
+                                ? (NodeView.portHitSize / 2 + NodeView.portLabelGap)
+                                : -(NodeView.portHitSize / 2 + NodeView.portLabelGap)
+                            )
                     }
                 }
         }
@@ -334,9 +357,7 @@ struct StandardNodeView: View {
                     .frame(width: NodeView.portHitSize, height: NodeView.portHitSize)
                 Circle()
                     .fill(
-                        isConnected && side == "in" && !isConnecting
-                        ? Color.red.opacity(0.75)
-                        : color
+                        color
                     )
                     .frame(width: NodeView.portDotSize, height: NodeView.portDotSize)
                     .overlay(Circle().stroke(Color.white, lineWidth: 1.25))
@@ -515,54 +536,69 @@ struct StandardNodeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 9))
             .shadow(color: .black.opacity(0.08), radius: 5, x: 0, y: 2)
             .overlay(RoundedRectangle(cornerRadius: 9).stroke(Color.primary.opacity(0.08), lineWidth: 1))
-            // ── Per-port interactive dots on card edges ──
-            .overlay {
+//MARK: -Per-port interactive dots on card edges
+           .overlay {
                 GeometryReader { geo in
+                    let rowCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
+
                     ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, portName in
                         let sigType = comp.inputs.indices.contains(idx)
-                        ? comp.inputs[idx]
-                        : (comp.inputs.first ?? "line")
-                        PortEdgeDot(instance: instance, portIndex: idx, side: "in",
-                                    total: comp.ports.inputs.count,
-                                    label: portName, signalType: sigType)
+                            ? comp.inputs[idx]
+                            : (comp.inputs.first ?? "line")
+
+                        PortEdgeDot(
+                            instance: instance,
+                            portIndex: idx,
+                            side: "in",
+                            total: comp.ports.inputs.count,
+                            label: portName,
+                            signalType: sigType
+                        )
                         .position(
                             x: 0,
-                            y: bodyPortY(idx: idx, total: comp.ports.inputs.count, height: geo.size.height)
+                            y: bodyPortY(idx: idx, rowCount: rowCount)
                         )
                     }
+
                     ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, portName in
                         let sigType = comp.outputs.indices.contains(idx)
-                        ? comp.outputs[idx]
-                        : (comp.outputs.first ?? "line")
-                        PortEdgeDot(instance: instance, portIndex: idx, side: "out",
-                                    total: comp.ports.outputs.count,
-                                    label: portName, signalType: sigType)
+                            ? comp.outputs[idx]
+                            : (comp.outputs.first ?? "line")
+
+                        PortEdgeDot(
+                            instance: instance,
+                            portIndex: idx,
+                            side: "out",
+                            total: comp.ports.outputs.count,
+                            label: portName,
+                            signalType: sigType
+                        )
                         .position(
                             x: geo.size.width,
-                            y: bodyPortY(idx: idx, total: comp.ports.outputs.count, height: geo.size.height)
+                            y: bodyPortY(idx: idx, rowCount: rowCount)
                         )
                     }
                 }
-            }
-            .onHover { isHovered = $0 }
-            .contentShape(RoundedRectangle(cornerRadius: 9))
-            .gesture(
-                DragGesture(minimumDistance: 4)
-                    .onChanged { value in
-                        guard appState.connectingFromId == nil else { return }
-                        if dragStartPos == nil { dragStartPos = instance.position }
-                        guard let start = dragStartPos else { return }
+           }
+        .onHover { isHovered = $0 }
+        .contentShape(RoundedRectangle(cornerRadius: 9))
+        .gesture(
+            DragGesture(minimumDistance: 4)
+                .onChanged { value in
+                    guard appState.connectingFromId == nil else { return }
+                    if dragStartPos == nil { dragStartPos = instance.position }
+                    guard let start = dragStartPos else { return }
                         
-                        let s = appState.canvasScale
-                        instance.position = CGPoint(
-                            x: max(0, start.x + value.translation.width / s),
-                            y: max(0, start.y + value.translation.height / s)
-                        )
-                    }
-                    .onEnded { _ in
-                        dragStartPos = nil
-                    },
-                including: .gesture
+                    let s = appState.canvasScale
+                    instance.position = CGPoint(
+                        x: max(0, start.x + value.translation.width / s),
+                        y: max(0, start.y + value.translation.height / s)
+                    )
+                }
+                .onEnded { _ in
+                    dragStartPos = nil
+                },
+            including: .gesture
             )
         }
     }
