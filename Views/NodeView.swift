@@ -28,8 +28,9 @@ func evenPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
 
 // MARK: - Constants
 extension NodeView {
-    static let width:      CGFloat = 168
+    static let width:      CGFloat = 192   // wider to fit port labels
     static let portRadius: CGFloat = 7
+    static let portRowH:   CGFloat = 22    // fixed height per port row
 }
 
 // MARK: - Node View
@@ -58,75 +59,81 @@ struct StandardNodeView: View {
     @State private var isHovered = false
     @State private var dragStartPos: CGPoint?
 
+    private var maxPortRows: Int {
+        max(comp.ports.inputs.count, comp.ports.outputs.count)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
-            // Category colour stripe
+            // ── Category colour stripe ──
             Rectangle()
                 .fill(Color.categoryColor(comp.category))
                 .frame(height: 3)
 
-            VStack(alignment: .leading, spacing: 4) {
-                // Header row
-                HStack(spacing: 6) {
-                    ComponentIcon(name: comp.iconName)
-                        .frame(width: 18, height: 18)
+            // ── Header ──
+            HStack(spacing: 6) {
+                ComponentIcon(name: comp.iconName)
+                    .frame(width: 18, height: 18)
+                VStack(alignment: .leading, spacing: 1) {
                     Text(comp.name)
                         .font(.system(size: 11, weight: .semibold))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                    // Delete button
-                    Button { appState.deleteNode(id: instance.id) } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .bold))
+                    if comp.manufacturer != "Generic" {
+                        Text(comp.manufacturer)
+                            .font(.system(size: 9))
                             .foregroundColor(.secondary)
                     }
-                    .buttonStyle(.plain)
-                    .opacity(isHovered ? 1 : 0)
-                    .allowsHitTesting(isHovered)
                 }
-
-                // Manufacturer
-                if comp.manufacturer != "Generic" {
-                    Text(comp.manufacturer)
-                        .font(.system(size: 9))
+                Spacer(minLength: 0)
+                Button { appState.deleteNode(id: instance.id) } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundColor(.secondary)
                 }
-
-                // Description
-                Text(comp.desc)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                // Signal level badge
-                if !comp.level.isEmpty {
-                    Text(comp.level)
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.08))
-                        .clipShape(Capsule())
-                }
-
-                // Coming Soon badge
-                if comp.comingSoon {
-                    Text("Coming Soon")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(.orange)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.12))
-                        .clipShape(Capsule())
-                }
-
+                .buttonStyle(.plain)
+                .opacity(isHovered ? 1 : 0)
+                .allowsHitTesting(isHovered)
             }
             .padding(.horizontal, 9)
             .padding(.top, 6)
-            .padding(.bottom, 8)
+            .padding(.bottom, 6)
+
+            // ── Port rows — one row per port, inputs left / outputs right ──
+            if maxPortRows > 0 {
+                Divider().opacity(0.3)
+                ForEach(0..<maxPortRows, id: \.self) { i in
+                    portRow(i)
+                }
+            }
+
+            // ── Footer: level + coming-soon badges ──
+            if !comp.level.isEmpty || comp.comingSoon {
+                Divider().opacity(0.3)
+                HStack(spacing: 4) {
+                    if !comp.level.isEmpty {
+                        Text(comp.level)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.08))
+                            .clipShape(Capsule())
+                    }
+                    if comp.comingSoon {
+                        Text("Coming Soon")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+            }
         }
         .frame(width: NodeView.width)
         .background(
@@ -141,37 +148,12 @@ struct StandardNodeView: View {
                         lineWidth: appState.connectingFromId == instance.id ? 2 : 1)
         )
         .shadow(color: .black.opacity(isHovered ? 0.14 : 0.08), radius: isHovered ? 10 : 5, x: 0, y: isHovered ? 4 : 2)
-        // ── Per-port interactive dots on card edges ──
-        .overlay {
-            GeometryReader { geo in
-                // Input dots — left edge
-                ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, portName in
-                    let sigType = comp.inputs.indices.contains(idx)
-                        ? comp.inputs[idx]
-                        : (comp.inputs.first ?? "line")
-                    PortEdgeDot(instance: instance, portIndex: idx, side: "in",
-                                total: comp.ports.inputs.count,
-                                label: portName, signalType: sigType)
-                        .position(x: 0, y: evenPortY(idx: idx, total: comp.ports.inputs.count, height: geo.size.height))
-                }
-                // Output dots — right edge
-                ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, portName in
-                    let sigType = comp.outputs.indices.contains(idx)
-                        ? comp.outputs[idx]
-                        : (comp.outputs.first ?? "line")
-                    PortEdgeDot(instance: instance, portIndex: idx, side: "out",
-                                total: comp.ports.outputs.count,
-                                label: portName, signalType: sigType)
-                        .position(x: geo.size.width, y: evenPortY(idx: idx, total: comp.ports.outputs.count, height: geo.size.height))
-                }
-            }
-        }
         .onHover { isHovered = $0 }
-        // highPriorityGesture ensures drag wins over child button taps.
-        // minimumDistance:0 so any movement begins the drag immediately.
-        // Port-dot taps still work because taps have zero movement.
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 0)
+        // Use .gesture (not highPriorityGesture) so port-dot onTapGesture children
+        // win over the parent drag.  minimumDistance:4 means pure taps (< 4pt) never
+        // start a drag, keeping port connections and the delete button working.
+        .gesture(
+            DragGesture(minimumDistance: 4)
                 .onChanged { value in
                     guard appState.connectingFromId == nil else { return }
                     if dragStartPos == nil { dragStartPos = instance.position }
@@ -184,6 +166,52 @@ struct StandardNodeView: View {
                 }
                 .onEnded { _ in dragStartPos = nil }
         )
+    }
+
+    /// One row showing an input port on the left and/or output port on the right.
+    /// The port dot is offset so its centre sits exactly on the card edge.
+    @ViewBuilder
+    private func portRow(_ i: Int) -> some View {
+        HStack(alignment: .center, spacing: 0) {
+            // ── Input side ──
+            if i < comp.ports.inputs.count {
+                let portName = comp.ports.inputs[i]
+                let sigType  = comp.inputs.indices.contains(i)
+                    ? comp.inputs[i] : (comp.inputs.first ?? "line")
+                PortEdgeDot(instance: instance, portIndex: i, side: "in",
+                            total: comp.ports.inputs.count,
+                            label: "", signalType: sigType)
+                    .offset(x: -7)              // centre dot on left card edge
+                Text(portName)
+                    .font(.system(size: 8))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .padding(.leading, 3)
+            } else {
+                Color.clear.frame(width: 14)    // placeholder keeps output aligned
+            }
+
+            Spacer(minLength: 4)
+
+            // ── Output side ──
+            if i < comp.ports.outputs.count {
+                let portName = comp.ports.outputs[i]
+                let sigType  = comp.outputs.indices.contains(i)
+                    ? comp.outputs[i] : (comp.outputs.first ?? "line")
+                Text(portName)
+                    .font(.system(size: 8))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .padding(.trailing, 3)
+                PortEdgeDot(instance: instance, portIndex: i, side: "out",
+                            total: comp.ports.outputs.count,
+                            label: "", signalType: sigType)
+                    .offset(x: 7)               // centre dot on right card edge
+            } else {
+                Color.clear.frame(width: 14)
+            }
+        }
+        .frame(height: NodeView.portRowH)
     }
 }
 
@@ -440,8 +468,8 @@ struct RackNodeView: View {
             }
         }
         .onHover { isHovered = $0 }
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 0)
+        .gesture(
+            DragGesture(minimumDistance: 4)
                 .onChanged { value in
                     if dragStartPos == nil { dragStartPos = instance.position }
                     guard let start = dragStartPos else { return }
