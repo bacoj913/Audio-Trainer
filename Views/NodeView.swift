@@ -27,9 +27,12 @@ func evenPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
 }
 func bodyPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
     let topReserved: CGFloat = 96
-    let bottomPadding: CGFloat = 14
-    let usableTop = topReserved
-    let usableBottom = height - bottomPadding
+    let bottomPadding: CGFloat = 10
+    let bodyTopInset: CGFloat = 15
+    let bodyBottomInset: CGFloat = 5
+
+    let usableTop = topReserved + bodyTopInset
+    let usableBottom = height - bottomPadding - bodyBottomInset
     let usableHeight = max(1, usableBottom - usableTop)
 
     guard total > 0 else { return usableTop + usableHeight / 2 }
@@ -38,14 +41,17 @@ func bodyPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
         return usableTop + usableHeight / 2
     }
 
-    let step = usableHeight / CGFloat(total + 1)
-    return usableTop + step * CGFloat(idx + 1)
+    let step = usableHeight / CGFloat(total - 1)
+    return usableTop + step * CGFloat(idx)
 }
+
 func standardNodeHeight(for comp: Component) -> CGFloat {
     let topReserved: CGFloat = 96
-    let bottomPadding: CGFloat = 14
-    let minBodyHeight: CGFloat = 36
-    let portSpacing: CGFloat = 24
+    let bottomPadding: CGFloat = 10
+    let minBodyHeight: CGFloat = 24
+    let portSpacing: CGFloat = 20
+    let bodyTopInset: CGFloat = 12
+    let bodyBottomInset: CGFloat = 5
 
     let portCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
 
@@ -53,10 +59,30 @@ func standardNodeHeight(for comp: Component) -> CGFloat {
         return topReserved + minBodyHeight + bottomPadding
     }
 
-    let bodyHeight = max(minBodyHeight, CGFloat(portCount + 1) * portSpacing)
+    let portsHeight = CGFloat(portCount - 1) * portSpacing
+    let bodyHeight = max(minBodyHeight, bodyTopInset + portsHeight + bodyBottomInset)
+
     return topReserved + bodyHeight + bottomPadding
 }
+func estimatedTextWidth(_ text: String, fontSize: CGFloat) -> CGFloat {
+    CGFloat(text.count) * fontSize * 0.58
+}
 
+func standardNodeWidth(for comp: Component) -> CGFloat {
+    let baseWidth: CGFloat = 168
+    let innerPadding: CGFloat = 18
+    let labelGapFromPort: CGFloat = 24
+
+    let longestInput = comp.ports.inputs.max(by: { $0.count < $1.count }) ?? ""
+    let longestOutput = comp.ports.outputs.max(by: { $0.count < $1.count }) ?? ""
+
+    let inputTextWidth = estimatedTextWidth(longestInput, fontSize: 8)
+    let outputTextWidth = estimatedTextWidth(longestOutput, fontSize: 8)
+
+    let totalLabelWidth = inputTextWidth + outputTextWidth + (labelGapFromPort * 2) + (innerPadding * 2)
+
+    return max(baseWidth, totalLabelWidth)
+}
 // MARK: - Constants
 extension NodeView {
     static let width:      CGFloat = 168
@@ -91,9 +117,9 @@ struct StandardNodeView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            
+
             VStack(alignment: .leading, spacing: 4) {
-                ZStack{ // Header row
+                ZStack { // Header row
                     HStack(spacing: 6) {
                         ComponentIcon(name: comp.iconName)
                             .frame(width: 18, height: 18)
@@ -119,24 +145,22 @@ struct StandardNodeView: View {
                     .background {
                         RoundedRectangle(cornerRadius: 9)
                             .fill(Color.categoryColor(comp.category))
-                            .frame(width: NodeView.width - 9)
                     }
+                    
                 }
-                // Manufacturer
+
                 if comp.manufacturer != "Generic" {
                     Text(comp.manufacturer)
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
                 }
-                
-                // Description
+
                 Text(comp.desc)
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                
-                // Signal level badge
+
                 if !comp.level.isEmpty {
                     Text(comp.level)
                         .font(.system(size: 9, weight: .medium))
@@ -146,8 +170,7 @@ struct StandardNodeView: View {
                         .background(Color.blue.opacity(0.08))
                         .clipShape(Capsule())
                 }
-                
-                // Coming Soon badge
+
                 if comp.comingSoon {
                     Text("Coming Soon")
                         .font(.system(size: 9, weight: .semibold))
@@ -157,15 +180,15 @@ struct StandardNodeView: View {
                         .background(Color.orange.opacity(0.12))
                         .clipShape(Capsule())
                 }
-                
-                
             }
-            .padding(.horizontal, 9)
+            .padding(.horizontal, 6)
             .padding(.top, 6)
             .padding(.bottom, 8)
+
+            Spacer(minLength: 0)
         }
         .frame(
-            width: NodeView.width,
+            width: standardNodeWidth(for: comp),
             height: standardNodeHeight(for: comp)
         )
         .background(
@@ -192,7 +215,7 @@ struct StandardNodeView: View {
                                 total: comp.ports.inputs.count,
                                 label: portName, signalType: sigType)
                     .position(
-                        x: NodeView.portRadius + 2,
+                        x: 0,
                         y: bodyPortY(idx: idx, total: comp.ports.inputs.count, height: geo.size.height)
                     )
                 }
@@ -205,7 +228,7 @@ struct StandardNodeView: View {
                                     total: comp.ports.outputs.count,
                                     label: portName, signalType: sigType)
                         .position(
-                            x: geo.size.width - NodeView.portRadius - 2,
+                            x: geo.size.width,
                             y: bodyPortY(idx: idx, total: comp.ports.outputs.count, height: geo.size.height)
                         )
                     }
@@ -274,7 +297,7 @@ struct StandardNodeView: View {
             // .position() in the overlay will center the dot precisely at the card edge.
             // The label hangs inside the card as a non-interactive overlay.
             dotCircle
-                .overlay(alignment: side == "in" ? .trailing : .leading) {
+                .overlay(alignment: side == "in" ? .leading : .trailing) {
                     if !label.isEmpty {
                         Text(label)
                             .font(.system(size: 8))
@@ -282,7 +305,7 @@ struct StandardNodeView: View {
                             .lineLimit(1)
                             .fixedSize()
                             .allowsHitTesting(false)
-                            .offset(x: side == "in" ? 11 : -11)
+                            .offset(x: side == "in" ? 24 : -24)
                     }
                 }
         }
@@ -398,7 +421,7 @@ struct StandardNodeView: View {
             .background(
                 (isInput ? Color(red: 0.37, green: 0.36, blue: 0.90) : Color.blue).opacity(0.08)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .clipShape(RoundedRectangle(cornerRadius: 9))
         }
     }
     
@@ -487,7 +510,7 @@ struct StandardNodeView: View {
                                     total: comp.ports.inputs.count,
                                     label: portName, signalType: sigType)
                         .position(
-                            x: NodeView.portRadius + 2,
+                            x: 0,
                             y: bodyPortY(idx: idx, total: comp.ports.inputs.count, height: geo.size.height)
                         )
                     }
@@ -499,7 +522,7 @@ struct StandardNodeView: View {
                                     total: comp.ports.outputs.count,
                                     label: portName, signalType: sigType)
                         .position(
-                            x: geo.size.width - NodeView.portRadius - 2,
+                            x: geo.size.width,
                             y: bodyPortY(idx: idx, total: comp.ports.outputs.count, height: geo.size.height)
                         )
                     }
@@ -604,7 +627,7 @@ struct StandardNodeView: View {
                 NodeView(instance: instance)
                     .environmentObject(AppState.standardNodePreviewState)
                     .padding()
-                    .frame(width: 260, height: 240)
+                    .fixedSize()
                     .coordinateSpace(name: "canvas")
             } else {
                 Text("No standard component available for preview")
@@ -613,54 +636,54 @@ struct StandardNodeView: View {
         }
     }
     
-    #Preview("NodeView - Rack") {
-        Group {
-            if let instance = AppState.rackNodePreviewState.instances.first {
-                NodeView(instance: instance)
-                    .environmentObject(AppState.rackNodePreviewState)
-                    .padding()
-                    .frame(width: 300, height: 260)
-                    .coordinateSpace(name: "canvas")
-            } else {
-                Text("No rack component available for preview")
-                    .padding()
-            }
+#Preview("NodeView - Rack") {
+    Group {
+        if let instance = AppState.rackNodePreviewState.instances.first {
+            NodeView(instance: instance)
+                .environmentObject(AppState.rackNodePreviewState)
+                .padding()
+                .fixedSize()
+                .coordinateSpace(name: "canvas")
+        } else {
+            Text("No rack component available for preview")
+                .padding()
         }
     }
+}
     
-    #Preview("StandardNodeView") {
-        Group {
-            let state = AppState.standardNodePreviewState
-            if let instance = state.instances.first {
-                let comp = Components.all[instance.type] ?? .placeholder
-                StandardNodeView(instance: instance, comp: comp)
-                    .environmentObject(state)
-                    .padding()
-                    .frame(width: 260, height: 240)
-                    .coordinateSpace(name: "canvas")
-            } else {
-                Text("No standard component available for preview")
-                    .padding()
-            }
+#Preview("StandardNodeView") {
+    Group {
+        let state = AppState.standardNodePreviewState
+        if let instance = state.instances.first {
+            let comp = Components.all[instance.type] ?? .placeholder
+            StandardNodeView(instance: instance, comp: comp)
+                .environmentObject(state)
+                .padding()
+                .fixedSize()
+                .coordinateSpace(name: "canvas")
+        } else {
+            Text("No standard component available for preview")
+                .padding()
         }
     }
+}
     
-    #Preview("RackNodeView") {
-        Group {
-            let state = AppState.rackNodePreviewState
-            if let instance = state.instances.first {
-                let comp = Components.all[instance.type] ?? .placeholder
-                RackNodeView(instance: instance, comp: comp)
-                    .environmentObject(state)
-                    .padding()
-                    .frame(width: 300, height: 260)
-                    .coordinateSpace(name: "canvas")
-            } else {
-                Text("No rack component available for preview")
-                    .padding()
-            }
+#Preview("RackNodeView") {
+    Group {
+        let state = AppState.rackNodePreviewState
+        if let instance = state.instances.first {
+            let comp = Components.all[instance.type] ?? .placeholder
+            RackNodeView(instance: instance, comp: comp)
+                .environmentObject(state)
+                .padding()
+                .fixedSize()
+                .coordinateSpace(name: "canvas")
+        } else {
+            Text("No rack component available for preview")
+                .padding()
         }
     }
+}
     
     #Preview("Port List Section") {
         PortListSection(
