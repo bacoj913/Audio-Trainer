@@ -102,7 +102,7 @@ class AppState: ObservableObject {
     private var nextNodeId = 1
 
     // MARK: - Canvas
-    static let nodeWidth: CGFloat = 192
+    static let nodeWidth: CGFloat = 168
     static let nodeHeight: CGFloat = 130
     static let rackNodeWidth: CGFloat = 200
 
