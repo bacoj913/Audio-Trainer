@@ -61,7 +61,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["XLR In Ch1", "XLR In Ch2"],
                 outputs: ["XLR Out Ch1", "XLR Out Ch2", "AES Out"]),
-            desc: "High-end field recorder/preamp", level: "Mic → Line"),
+            desc: "High-end field recorder/preamp", level: "Mic → Line",
+            rackUnits: 1),
 
         Component(id: "equalizer",
             name: "Lake LM 44", iconName: "equalizer",
@@ -70,7 +71,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["AES In 1-4", "Analog In 1-4"],
                 outputs: ["AES Out 1-4", "Analog Out 1-4"]),
-            desc: "Loudspeaker processor & EQ", level: "Line Level"),
+            desc: "Loudspeaker processor & EQ", level: "Line Level",
+            rackUnits: 1),
 
         Component(id: "compressor",
             name: "SSL G-Bus Compressor", iconName: "compressor",
@@ -79,7 +81,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["XLR In L", "XLR In R"],
                 outputs: ["XLR Out L", "XLR Out R"]),
-            desc: "Bus compressor, controls dynamic range", level: "Line Level"),
+            desc: "Bus compressor, controls dynamic range", level: "Line Level",
+            rackUnits: 1),
 
         Component(id: "gate",
             name: "Drawmer DS201", iconName: "gate",
@@ -88,7 +91,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["XLR In Ch1", "XLR In Ch2"],
                 outputs: ["XLR Out Ch1", "XLR Out Ch2"]),
-            desc: "Dual-channel noise gate", level: "Line Level"),
+            desc: "Dual-channel noise gate", level: "Line Level",
+            rackUnits: 1),
 
         // ── Effects ──────────────────────────────────────────
         Component(id: "effects",
@@ -98,7 +102,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["AES In 1-8", "Analog In 1-6"],
                 outputs: ["AES Out 1-8", "Analog Out 1-6"]),
-            desc: "Reverb, delay, and multi-effects engine", level: "Line Level"),
+            desc: "Reverb, delay, and multi-effects engine", level: "Line Level",
+            rackUnits: 2),
 
         Component(id: "effects_pedal",
             name: "Strymon BigSky", iconName: "pedal",
@@ -144,7 +149,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["TRS 1-48 (Rear)"],
                 outputs: ["TRS 1-48 (Front)"]),
-            desc: "48-point TRS patchbay", level: "Line Level"),
+            desc: "48-point TRS patchbay", level: "Line Level",
+            rackUnits: 1),
 
         // ── Recording ────────────────────────────────────────
         Component(id: "audio_interface",
@@ -154,7 +160,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["XLR/TRS Combo 1-8", "Optical In 1-8", "AES In 1-8"],
                 outputs: ["TRS Out 1-8", "AES Out 1-8", "Optical Out 1-8", "Headphone 1", "Headphone 2"]),
-            desc: "Thunderbolt audio interface, UAD DSP", level: "AD/DA Converter"),
+            desc: "Thunderbolt audio interface, UAD DSP", level: "AD/DA Converter",
+            rackUnits: 1),
 
         // ── Output ───────────────────────────────────────────
         Component(id: "power_amp",
@@ -164,7 +171,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["XLR In 1", "XLR In 2", "XLR In 3", "XLR In 4", "AES In", "Dante In"],
                 outputs: ["Speakon Ch1", "Speakon Ch2", "Speakon Ch3", "Speakon Ch4"]),
-            desc: "20,000W 4-ch amplifier, Dante/AES", level: "Speaker Level"),
+            desc: "20,000W 4-ch amplifier, Dante/AES", level: "Speaker Level",
+            rackUnits: 2),
 
         Component(id: "power_amp_powersoft",
             name: "Powersoft X8", iconName: "power_amp",
@@ -175,7 +183,8 @@ enum Components {
                           "XLR In 5", "XLR In 6", "XLR In 7", "XLR In 8", "AES67/Dante In"],
                 outputs: ["Speakon 1", "Speakon 2", "Speakon 3", "Speakon 4",
                           "Speakon 5", "Speakon 6", "Speakon 7", "Speakon 8"]),
-            desc: "8-ch touring amplifier, AES67 network", level: "Speaker Level"),
+            desc: "8-ch touring amplifier, AES67 network", level: "Speaker Level",
+            rackUnits: 2),
 
         Component(id: "speakers",
             name: "L-Acoustics K2", iconName: "speaker",
@@ -230,7 +239,8 @@ enum Components {
                 inputs:  ["XLR In 1", "XLR In 2", "XLR In 3", "XLR In 4",
                           "XLR In 5", "XLR In 6", "XLR In 7", "XLR In 8", "Ethernet (Dante)"],
                 outputs: ["1/4\" HP 1", "1/4\" HP 2"]),
-            desc: "8-ch personal monitor mixer hub", level: "Headphone Level"),
+            desc: "8-ch personal monitor mixer hub", level: "Headphone Level",
+            rackUnits: 1),
 
         // ── Wireless Microphones ─────────────────────────────
         Component(id: "wireless_rx",
@@ -240,7 +250,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["Antenna A (BNC)", "Antenna B (BNC)", "Antenna C (BNC)", "Antenna D (BNC)"],
                 outputs: ["XLR Out Ch1", "XLR Out Ch2", "XLR Out Ch3", "XLR Out Ch4", "Dante Out"]),
-            desc: "4-channel wireless receiver, Dante", level: "RF → Line"),
+            desc: "4-channel wireless receiver, Dante", level: "RF → Line",
+            rackUnits: 1),
 
         Component(id: "wireless_rx_senn",
             name: "Sennheiser EM 6000 Dante", iconName: "wireless_rx",
@@ -249,7 +260,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["Antenna A (BNC)", "Antenna B (BNC)"],
                 outputs: ["XLR Out Ch1", "XLR Out Ch2", "AES Out", "Dante Out"]),
-            desc: "2-ch wireless receiver, Dante", level: "RF → Line"),
+            desc: "2-ch wireless receiver, Dante", level: "RF → Line",
+            rackUnits: 1),
 
         Component(id: "wireless_rx_wisycom",
             name: "Wisycom MCR54", iconName: "wireless_rx",
@@ -259,7 +271,8 @@ enum Components {
                 inputs:  ["Antenna A (BNC)", "Antenna B (BNC)"],
                 outputs: ["XLR Out Ch1", "XLR Out Ch2", "XLR Out Ch3", "XLR Out Ch4",
                           "AES Out", "Dante Out"]),
-            desc: "4-ch quad-diversity receiver", level: "RF → Line"),
+            desc: "4-ch quad-diversity receiver", level: "RF → Line",
+            rackUnits: 1),
 
         Component(id: "wireless_beltpack_tx",
             name: "Shure AD1 Bodypack TX", iconName: "wireless_tx",
@@ -301,7 +314,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["XLR In L", "XLR In R", "Dante In"],
                 outputs: ["Antenna Out A (BNC)", "Antenna Out B (BNC)"]),
-            desc: "Stereo IEM transmitter, Dante option", level: "Line → RF"),
+            desc: "Stereo IEM transmitter, Dante option", level: "Line → RF",
+            rackUnits: 1),
 
         Component(id: "iem_tx_senn",
             name: "Sennheiser SR IEM G4 TX", iconName: "iem_tx",
@@ -310,7 +324,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["XLR/TRS Combo In L", "XLR/TRS Combo In R", "Ethernet (RJ45)"],
                 outputs: ["Antenna Out (BNC)"]),
-            desc: "Stereo IEM transmitter, 1680 frequencies", level: "Line → RF"),
+            desc: "Stereo IEM transmitter, 1680 frequencies", level: "Line → RF",
+            rackUnits: 1),
 
         Component(id: "iem_rx",
             name: "Shure P10R IEM Bodypack", iconName: "iem_rx",
@@ -355,7 +370,8 @@ enum Components {
                           "Distro Out 2A (BNC)", "Distro Out 2B (BNC)",
                           "Distro Out 3A (BNC)", "Distro Out 3B (BNC)",
                           "Distro Out 4A (BNC)", "Distro Out 4B (BNC)"]),
-            desc: "Active 4-way antenna splitter/distro", level: "RF Distribution"),
+            desc: "Active 4-way antenna splitter/distro", level: "RF Distribution",
+            rackUnits: 1),
 
         Component(id: "antenna_distro_rf_venue",
             name: "RF Venue DISTRO4", iconName: "distro",
@@ -367,7 +383,8 @@ enum Components {
                           "Out 2A (BNC)", "Out 2B (BNC)",
                           "Out 3A (BNC)", "Out 3B (BNC)",
                           "Out 4A (BNC)", "Out 4B (BNC)"]),
-            desc: "4-channel antenna distributor", level: "RF Distribution"),
+            desc: "4-channel antenna distributor", level: "RF Distribution",
+            rackUnits: 1),
 
         Component(id: "antenna_distro_wisycom",
             name: "Wisycom BFA Antenna Distro", iconName: "distro",
@@ -379,7 +396,8 @@ enum Components {
                           "Out 2A (BNC)", "Out 2B (BNC)",
                           "Out 3A (BNC)", "Out 3B (BNC)",
                           "Out 4A (BNC)", "Out 4B (BNC)"]),
-            desc: "Active 4-way antenna distributor with bias-T power", level: "RF Distribution"),
+            desc: "Active 4-way antenna distributor with bias-T power", level: "RF Distribution",
+            rackUnits: 1),
 
         Component(id: "antenna_distro_lectro",
             name: "Lectrosonics UMCWBD-L Distro", iconName: "distro",
@@ -391,7 +409,8 @@ enum Components {
                           "Out 2A (BNC)", "Out 2B (BNC)",
                           "Out 3A (BNC)", "Out 3B (BNC)",
                           "Out 4A (BNC)", "Out 4B (BNC)"]),
-            desc: "Wideband 4-slot antenna multicoupler", level: "RF Distribution"),
+            desc: "Wideband 4-slot antenna multicoupler", level: "RF Distribution",
+            rackUnits: 1),
 
         Component(id: "antenna_combiner_shure",
             name: "Shure UA844+SWB Combiner", iconName: "combiner",
@@ -400,7 +419,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["TX In 1 (BNC)", "TX In 2 (BNC)", "TX In 3 (BNC)", "TX In 4 (BNC)"],
                 outputs: ["Combined Ant Out A (BNC)", "Combined Ant Out B (BNC)"]),
-            desc: "4-in active IEM transmitter antenna combiner", level: "RF Combining"),
+            desc: "4-in active IEM transmitter antenna combiner", level: "RF Combining",
+            rackUnits: 1),
 
         Component(id: "antenna_combiner_senn",
             name: "Sennheiser AC 3200-II Combiner", iconName: "combiner",
@@ -410,7 +430,8 @@ enum Components {
                 inputs:  ["TX In 1 (BNC)", "TX In 2 (BNC)", "TX In 3 (BNC)", "TX In 4 (BNC)",
                           "TX In 5 (BNC)", "TX In 6 (BNC)", "TX In 7 (BNC)", "TX In 8 (BNC)"],
                 outputs: ["Combined Out A (BNC)", "Combined Out B (BNC)"]),
-            desc: "8-in IEM transmitter antenna combiner", level: "RF Combining"),
+            desc: "8-in IEM transmitter antenna combiner", level: "RF Combining",
+            rackUnits: 2),
 
         Component(id: "antenna_combiner_pws",
             name: "PWS DC216 Dual Combiner", iconName: "combiner",
@@ -419,7 +440,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["TX In 1 (BNC)", "TX In 2 (BNC)"],
                 outputs: ["Combined Out (BNC)"]),
-            desc: "2-channel passive IEM TX combiner with bandpass filters", level: "RF Combining"),
+            desc: "2-channel passive IEM TX combiner with bandpass filters", level: "RF Combining",
+            rackUnits: 1),
 
         // ── Networking ───────────────────────────────────────
         Component(id: "network_switch",
@@ -431,7 +453,8 @@ enum Components {
                           "Ethernet 4 (RJ45/PoE)", "Ethernet 5-28 (RJ45/PoE)", "SFP 1", "SFP 2"],
                 outputs: ["Ethernet 1 (RJ45/PoE)", "Ethernet 2 (RJ45/PoE)", "Ethernet 3 (RJ45/PoE)",
                           "Ethernet 4 (RJ45/PoE)", "Ethernet 5-28 (RJ45/PoE)", "SFP 1", "SFP 2"]),
-            desc: "28-port Gigabit PoE managed switch for Dante", level: "Dante / AES67"),
+            desc: "28-port Gigabit PoE managed switch for Dante", level: "Dante / AES67",
+            rackUnits: 1),
 
         Component(id: "network_switch_luminex",
             name: "Luminex GigaCore 10", iconName: "network",
@@ -444,7 +467,8 @@ enum Components {
                 outputs: ["Ethernet 1 (EtherCon)", "Ethernet 2 (EtherCon)", "Ethernet 3 (EtherCon)",
                           "Ethernet 4 (EtherCon)", "Ethernet 5 (EtherCon)", "Ethernet 6 (EtherCon)",
                           "Ethernet 7 (EtherCon)", "Ethernet 8 (EtherCon)", "SFP 1", "SFP 2"]),
-            desc: "10-port managed switch, media/show optimized", level: "Dante / AES67"),
+            desc: "10-port managed switch, media/show optimized", level: "Dante / AES67",
+            rackUnits: 1),
 
         // ── Stage Boxes / Snakes ─────────────────────────────
         Component(id: "stagebox_12",
@@ -458,7 +482,8 @@ enum Components {
                 outputs: ["XLR Out 1", "XLR Out 2", "XLR Out 3", "XLR Out 4",
                           "XLR Out 5", "XLR Out 6", "XLR Out 7", "XLR Out 8",
                           "Dante Port A (EtherCon)", "Dante Port B (EtherCon)"]),
-            desc: "12-in stage box, Dante network I/O", level: "Analog → Dante"),
+            desc: "12-in stage box, Dante network I/O", level: "Analog → Dante",
+            rackUnits: 1),
 
         Component(id: "stagebox_16",
             name: "DiGiCo Orange Box (16ch)", iconName: "stagebox",
@@ -472,7 +497,8 @@ enum Components {
                 outputs: ["XLR Out 1", "XLR Out 2", "XLR Out 3", "XLR Out 4",
                           "XLR Out 5", "XLR Out 6", "XLR Out 7", "XLR Out 8",
                           "MADI Out A (BNC)", "MADI Out B (BNC)", "Dante Out (EtherCon)"]),
-            desc: "16-in stage box, MADI + Dante", level: "Analog → MADI/Dante"),
+            desc: "16-in stage box, MADI + Dante", level: "Analog → MADI/Dante",
+            rackUnits: 1),
 
         Component(id: "stagebox_24",
             name: "Yamaha Rio3224-D2 (24ch)", iconName: "stagebox",
@@ -488,7 +514,8 @@ enum Components {
                 outputs: ["XLR Out 1", "XLR Out 2", "XLR Out 3", "XLR Out 4",
                           "XLR Out 5", "XLR Out 6", "XLR Out 7", "XLR Out 8",
                           "Dante Port A (EtherCon)", "Dante Port B (EtherCon)"]),
-            desc: "24-in/8-out stage box, Dante", level: "Analog → Dante"),
+            desc: "24-in/8-out stage box, Dante", level: "Analog → Dante",
+            rackUnits: 2),
 
         Component(id: "stagebox_32",
             name: "DiGiCo SD-Rack (32ch)", iconName: "stagebox",
@@ -498,7 +525,8 @@ enum Components {
                 inputs:  ["XLR In 1-8", "XLR In 9-16", "XLR In 17-24", "XLR In 25-32"],
                 outputs: ["XLR Out 1-8", "XLR Out 9-16",
                           "MADI Out A (BNC)", "MADI Out B (BNC)", "Optics Out"]),
-            desc: "32-in/16-out SD-Rack, MADI + optical", level: "Analog → MADI"),
+            desc: "32-in/16-out SD-Rack, MADI + optical", level: "Analog → MADI",
+            rackUnits: 3),
 
         Component(id: "stagebox_40",
             name: "Yamaha Rio6432-D2 (40ch)", iconName: "stagebox",
@@ -509,7 +537,8 @@ enum Components {
                           "XLR In 25-32", "XLR In 33-40", "XLR In 41-48 (expansion)"],
                 outputs: ["XLR Out 1-16",
                           "Dante Port A (EtherCon)", "Dante Port B (EtherCon)"]),
-            desc: "40-in/32-out stage box, dual Dante", level: "Analog → Dante"),
+            desc: "40-in/32-out stage box, dual Dante", level: "Analog → Dante",
+            rackUnits: 3),
 
         // ── Rack Enclosures ──────────────────────────────────
         Component(id: "rack_8u",
@@ -559,7 +588,8 @@ enum Components {
             ports: PortInfo(
                 inputs:  ["TX In 1 (BNC)", "TX In 2 (BNC)"],
                 outputs: ["Combined Out (BNC)"]),
-            desc: "Passive 2-ch IEM TX combiner, bandpass filters", level: "RF Combining"),
+            desc: "Passive 2-ch IEM TX combiner, bandpass filters", level: "RF Combining",
+            rackUnits: 1),
 
         Component(id: "pws_combiner_8ch",
             name: "PWS UCP-8 8ch Combiner", iconName: "combiner",
@@ -569,7 +599,8 @@ enum Components {
                 inputs:  ["TX In 1 (BNC)", "TX In 2 (BNC)", "TX In 3 (BNC)", "TX In 4 (BNC)",
                           "TX In 5 (BNC)", "TX In 6 (BNC)", "TX In 7 (BNC)", "TX In 8 (BNC)"],
                 outputs: ["Combined Out A (BNC)", "Combined Out B (BNC)"]),
-            desc: "8-ch active IEM TX combiner with bandpass filters", level: "RF Combining"),
+            desc: "8-ch active IEM TX combiner with bandpass filters", level: "RF Combining",
+            rackUnits: 1),
 
         Component(id: "pws_distro",
             name: "PWS PS-RF-1 Antenna Distro", iconName: "distro",
@@ -581,7 +612,8 @@ enum Components {
                           "Out 2A (BNC)", "Out 2B (BNC)",
                           "Out 3A (BNC)", "Out 3B (BNC)",
                           "Out 4A (BNC)", "Out 4B (BNC)"]),
-            desc: "Active 4-way antenna distributor with DC bias", level: "RF Distribution"),
+            desc: "Active 4-way antenna distributor with DC bias", level: "RF Distribution",
+            rackUnits: 1),
     ]
 }
 #if DEBUG
