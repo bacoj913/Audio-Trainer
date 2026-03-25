@@ -40,10 +40,10 @@
 		5131C8912F72F23700C5E043 /* NodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeView.swift; sourceTree = "<group>"; };
 		5131C8922F72F23700C5E043 /* RFPlannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFPlannerView.swift; sourceTree = "<group>"; };
 		5131C8932F72F23700C5E043 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
-		5131C8A32F72F23700C5E043 /* CanvasTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasTabBar.swift; sourceTree = "<group>"; };
-		5131C8A52F72F23700C5E043 /* RackCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackCanvasView.swift; sourceTree = "<group>"; };
 		5131C8942F72F23700C5E043 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		5131C8952F72F23700C5E043 /* AudioSignalFlowTrainerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSignalFlowTrainerApp.swift; sourceTree = "<group>"; };
+		5131C8A32F72F23700C5E043 /* CanvasTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasTabBar.swift; sourceTree = "<group>"; };
+		5131C8A52F72F23700C5E043 /* RackCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackCanvasView.swift; sourceTree = "<group>"; };
 		5190CFC72F72BC8400D14744 /* Signal Flow App V3.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Signal Flow App V3.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
