@@ -59,27 +59,39 @@ struct StandardNodeView: View {
     @State private var isHovered = false
     @State private var dragStartPos: CGPoint?
 
+    // Fixed layout constants — must match the actual VStack geometry so dot
+    // positions calculated below line up with the text rows.
+    private let stripeH:  CGFloat = 3
+    private let headerH:  CGFloat = 36   // paddings + icon/name row (single line)
+    private let dividerH: CGFloat = 0.5  // SwiftUI Divider
+
     private var maxPortRows: Int {
         max(comp.ports.inputs.count, comp.ports.outputs.count)
+    }
+
+    /// Y centre of port row `i` within the card's coordinate space.
+    private func dotY(_ i: Int) -> CGFloat {
+        stripeH + headerH + dividerH
+            + CGFloat(i) * NodeView.portRowH
+            + NodeView.portRowH / 2
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
-            // ── Category colour stripe ──
+            // ── Category colour stripe ──────────────────────
             Rectangle()
                 .fill(Color.categoryColor(comp.category))
-                .frame(height: 3)
+                .frame(height: stripeH)
 
-            // ── Header ──
+            // ── Header (FIXED HEIGHT so dotY() math is exact) ──
             HStack(spacing: 6) {
                 ComponentIcon(name: comp.iconName)
                     .frame(width: 18, height: 18)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(comp.name)
                         .font(.system(size: 11, weight: .semibold))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
                     if comp.manufacturer != "Generic" {
                         Text(comp.manufacturer)
                             .font(.system(size: 9))
@@ -97,18 +109,17 @@ struct StandardNodeView: View {
                 .allowsHitTesting(isHovered)
             }
             .padding(.horizontal, 9)
-            .padding(.top, 6)
-            .padding(.bottom, 6)
+            .frame(height: headerH)         // enforces the constant above
 
-            // ── Port rows — one row per port, inputs left / outputs right ──
+            // ── Port rows (text labels only — drive card height) ──
             if maxPortRows > 0 {
                 Divider().opacity(0.3)
                 ForEach(0..<maxPortRows, id: \.self) { i in
-                    portRow(i)
+                    portLabelRow(i)
                 }
             }
 
-            // ── Footer: level + coming-soon badges ──
+            // ── Footer ──────────────────────────────────────
             if !comp.level.isEmpty || comp.comingSoon {
                 Divider().opacity(0.3)
                 HStack(spacing: 4) {
@@ -147,11 +158,34 @@ struct StandardNodeView: View {
                         : Color.primary.opacity(0.08),
                         lineWidth: appState.connectingFromId == instance.id ? 2 : 1)
         )
-        .shadow(color: .black.opacity(isHovered ? 0.14 : 0.08), radius: isHovered ? 10 : 5, x: 0, y: isHovered ? 4 : 2)
+        .shadow(color: .black.opacity(isHovered ? 0.14 : 0.08),
+                radius: isHovered ? 10 : 5, x: 0, y: isHovered ? 4 : 2)
+        // ── Interactive port dots positioned using fixed-layout math ──
+        // Placed in an overlay so .position() reports canvas coords correctly
+        // via the PortAnchorPref preference key inside PortEdgeDot.
+        .overlay {
+            ZStack {
+                ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, _ in
+                    let sigType = comp.inputs.indices.contains(idx)
+                        ? comp.inputs[idx] : (comp.inputs.first ?? "line")
+                    PortEdgeDot(instance: instance, portIndex: idx, side: "in",
+                                total: comp.ports.inputs.count,
+                                label: "", signalType: sigType)
+                        .position(x: 0, y: dotY(idx))
+                }
+                ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, _ in
+                    let sigType = comp.outputs.indices.contains(idx)
+                        ? comp.outputs[idx] : (comp.outputs.first ?? "line")
+                    PortEdgeDot(instance: instance, portIndex: idx, side: "out",
+                                total: comp.ports.outputs.count,
+                                label: "", signalType: sigType)
+                        .position(x: NodeView.width, y: dotY(idx))
+                }
+            }
+        }
         .onHover { isHovered = $0 }
-        // Use .gesture (not highPriorityGesture) so port-dot onTapGesture children
-        // win over the parent drag.  minimumDistance:4 means pure taps (< 4pt) never
-        // start a drag, keeping port connections and the delete button working.
+        // .gesture (not highPriorityGesture) so child onTapGesture on port dots
+        // wins; minimumDistance:4 means a pure tap never starts a node drag.
         .gesture(
             DragGesture(minimumDistance: 4)
                 .onChanged { value in
@@ -168,47 +202,31 @@ struct StandardNodeView: View {
         )
     }
 
-    /// One row showing an input port on the left and/or output port on the right.
-    /// The port dot is offset so its centre sits exactly on the card edge.
+    /// Text-only port row: input name left-aligned, output name right-aligned.
+    /// Indented 11 pt each side so the text clears the dot (7 pt radius + 4 pt gap).
     @ViewBuilder
-    private func portRow(_ i: Int) -> some View {
-        HStack(alignment: .center, spacing: 0) {
-            // ── Input side ──
+    private func portLabelRow(_ i: Int) -> some View {
+        HStack(alignment: .center, spacing: 4) {
             if i < comp.ports.inputs.count {
-                let portName = comp.ports.inputs[i]
-                let sigType  = comp.inputs.indices.contains(i)
-                    ? comp.inputs[i] : (comp.inputs.first ?? "line")
-                PortEdgeDot(instance: instance, portIndex: i, side: "in",
-                            total: comp.ports.inputs.count,
-                            label: "", signalType: sigType)
-                    .offset(x: -7)              // centre dot on left card edge
-                Text(portName)
+                Text(comp.ports.inputs[i])
                     .font(.system(size: 8))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
-                    .padding(.leading, 3)
+                    .padding(.leading, 11)
             } else {
-                Color.clear.frame(width: 14)    // placeholder keeps output aligned
+                Spacer().frame(width: 11)
             }
 
             Spacer(minLength: 4)
 
-            // ── Output side ──
             if i < comp.ports.outputs.count {
-                let portName = comp.ports.outputs[i]
-                let sigType  = comp.outputs.indices.contains(i)
-                    ? comp.outputs[i] : (comp.outputs.first ?? "line")
-                Text(portName)
+                Text(comp.ports.outputs[i])
                     .font(.system(size: 8))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
-                    .padding(.trailing, 3)
-                PortEdgeDot(instance: instance, portIndex: i, side: "out",
-                            total: comp.ports.outputs.count,
-                            label: "", signalType: sigType)
-                    .offset(x: 7)               // centre dot on right card edge
+                    .padding(.trailing, 11)
             } else {
-                Color.clear.frame(width: 14)
+                Spacer().frame(width: 11)
             }
         }
         .frame(height: NodeView.portRowH)
