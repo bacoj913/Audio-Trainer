@@ -100,7 +100,8 @@ func standardNodeWidth(for comp: Component) -> CGFloat {
 extension NodeView {
     static let width: CGFloat = 168
     static let portDotSize: CGFloat = 10
-    static let portHitSize: CGFloat = 54
+    static let portHitWidth: CGFloat = 30
+    static let portHitHeight: CGFloat = 18
     static let portXMarkSize: CGFloat = 5
     
     static let portLabelGap: CGFloat = 12
@@ -345,16 +346,17 @@ struct PortEdgeDot: View {
     var label: String = ""
     var signalType: String = "line"
     var bundleStyle: PortGroup.BundleStyle = .single
+
     @EnvironmentObject var appState: AppState
-        
+
     private var color: Color { Color.signalTypeColor(signalType) }
-        
+
     private var isSource: Bool {
         appState.connectingFromId == instance.id && appState.connectingFromPortIndex == portIndex
     }
-    
+
     private var isConnecting: Bool { appState.connectingFromId != nil }
-    
+
     private var isConnected: Bool {
         if side == "in" {
             return appState.activeTab.connections.contains {
@@ -366,55 +368,32 @@ struct PortEdgeDot: View {
             }
         }
     }
-    
-    var body: some View {
-        // The view's layout frame is exactly the 14×14 dot circle.
-        // .position() in the overlay will center the dot precisely at the card edge.
-        // The label hangs inside the card as a non-interactive overlay.
-        dotCircle
-            .overlay(alignment: side == "in" ? .leading : .trailing) {
-                if !label.isEmpty {
-                    Text(label)
-                        .font(.system(size: 8))
-                        .foregroundColor(.primary.opacity(0.65))
-                        .lineLimit(1)
-                        .fixedSize()
-                        .allowsHitTesting(false)
-                        .offset(
-                            x: side == "in"
-                            ? (NodeView.portHitSize / 2 + NodeView.portLabelGap)
-                            : -(NodeView.portHitSize / 2 + NodeView.portLabelGap)
-                        )
-                }
-            }
-    }
-        
-    private var dotCircle: some View {
-        ZStack {
-            Circle()
-                .fill(Color.clear)
-                .frame(width: NodeView.portHitSize, height: NodeView.portHitSize)
 
-            PortGlyph(
-                color: color,
-                bundleStyle: bundleStyle,
-                showDisconnectMark: isConnected && side == "in" && !isConnecting
-            )
+    var body: some View {
+        ZStack {
+            // horizontal hit area, but compact vertically so rows do not overlap
+            Rectangle()
+                .fill(Color.clear)
+                .frame(width: NodeView.portHitWidth, height: NodeView.portHitHeight)
+
+            glyphWithAnchor
+        }
+        .overlay(alignment: side == "in" ? .leading : .trailing) {
+            if !label.isEmpty {
+                Text(label)
+                    .font(.system(size: 8))
+                    .foregroundColor(.primary.opacity(0.65))
+                    .lineLimit(1)
+                    .fixedSize()
+                    .allowsHitTesting(false)
+                    .offset(
+                        x: side == "in"
+                            ? (NodeView.portHitWidth / 2 + NodeView.portLabelGap)
+                            : -(NodeView.portHitWidth / 2 + NodeView.portLabelGap)
+                    )
+            }
         }
         .contentShape(Rectangle())
-        .shadow(
-            color: color.opacity(0.5),
-            radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
-        )
-        .background(
-            GeometryReader { geo in
-                Color.clear.preference(
-                    key: PortAnchorPref.self,
-                    value: ["\(instance.id)-\(side)-\(portIndex)":
-                                geo.frame(in: .named("canvas")).center]
-                )
-            }
-        )
         .onTapGesture {
             if side == "out" {
                 if !isConnecting {
@@ -432,12 +411,34 @@ struct PortEdgeDot: View {
         }
         .help(
             side == "in"
-            ? (isConnected ? "Click to disconnect" : "Input — click to connect")
-            : "Output — click to start connection"
+                ? (isConnected ? "Click to disconnect" : "Input — click to connect")
+                : "Output — click to start connection"
+        )
+    }
+
+    private var glyphWithAnchor: some View {
+        PortGlyph(
+            color: color,
+            bundleStyle: bundleStyle,
+            showDisconnectMark: isConnected && side == "in" && !isConnecting
+        )
+        .shadow(
+            color: color.opacity(0.5),
+            radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
+        )
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: PortAnchorPref.self,
+                    value: [
+                        "\(instance.id)-\(side)-\(portIndex)":
+                            CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+                    ]
+                )
+            }
         )
     }
 }
-
 // MARK: - Multichannel Port Glyph
 struct PortGlyph: View {
     let color: Color
