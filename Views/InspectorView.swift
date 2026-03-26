@@ -36,14 +36,19 @@ struct FreePanelView: View {
                     howToStep(n: 5, text: "Double-click palette items to add at default position")
                 }
             }
-//FIXME: Add all signal types found in signal colors
-            // Signal levels legend
+            // Signal types legend
             InspectorSection(title: "SIGNAL TYPES") {
                 VStack(spacing: 4) {
-                    LevelRow(color: .green,  label: "Mic Level",   tag: "~1 mV")
-                    LevelRow(color: .orange, label: "Instrument",  tag: "~100 mV")
-                    LevelRow(color: .blue,   label: "Line Level",  tag: "~1 V")
-                    LevelRow(color: .red,    label: "Speaker",     tag: "10–100 V")
+                    LevelRow(color: .signalTypeColor("mic"),        label: "Mic / Line",       tag: "analog")
+                    LevelRow(color: .signalTypeColor("instrument"), label: "Instrument",        tag: "analog")
+                    LevelRow(color: .signalTypeColor("speaker"),    label: "Speaker",           tag: "analog")
+                    LevelRow(color: .signalTypeColor("aes"),        label: "AES",               tag: "digital")
+                    LevelRow(color: .signalTypeColor("madi"),       label: "MADI",              tag: "digital")
+                    LevelRow(color: .signalTypeColor("fiber"),      label: "Fiber / Optical",   tag: "digital")
+                    LevelRow(color: .signalTypeColor("dante"),      label: "Dante / Milan",     tag: "network")
+                    LevelRow(color: .signalTypeColor("rf"),         label: "RF",                tag: "wireless")
+                    LevelRow(color: .signalTypeColor("antenna"),    label: "Antenna",           tag: "wireless")
+                    LevelRow(color: .signalTypeColor("power"),      label: "Power",             tag: "power")
                 }
             }
 
