@@ -5,7 +5,100 @@ import UniformTypeIdentifiers
 
 // Height per rack unit (1U = 44.45mm physical, represented here as 44pt)
 private let unitHeight: CGFloat = 44
+// MARK: - Helpers
+/// Splits a side's ports into rows, determined by ru-1.
+/// - Parameters:
+///   - totalPorts: Total number of ports on that side.
+///   - rackUnits: Rack height of the device.
+/// - Returns: Rows containing original port indexes.
+func rackGearRows(totalPorts: Int, rackUnits: Int, maxPortsPerRow: Int = 8)
+    -> [[Int]]
+{
+    guard totalPorts > 0 else { return [] }
 
+    let targetRows = max(rackUnits - 1, 1)
+    let portsPerRow = max(
+        1,
+        min(
+            maxPortsPerRow,
+            Int(ceil(Double(totalPorts) / Double(targetRows)))
+        )
+    )
+
+    var rows: [[Int]] = []
+    var current: [Int] = []
+
+    for i in 0..<totalPorts {
+        current.append(i)
+
+        if current.count == portsPerRow {
+            rows.append(current)
+            current = []
+        }
+    }
+
+    if !current.isEmpty {
+        rows.append(current)
+    }
+
+    return rows
+}
+/// Returns the y-position for a visual row of ports.
+/// Rows are based on how many actual rows of ports exist, not rack unit count.
+func rackGearRowY(
+    row: Int,
+    totalRows: Int,
+    height: CGFloat,
+    headerHeight: CGFloat
+) -> CGFloat {
+    let rows = max(totalRows, 1)
+    let topInset: CGFloat = 14
+    let bottomInset: CGFloat = 14
+
+    let usableHeight = max(height - headerHeight - topInset - bottomInset, 12)
+    let rowBandHeight = usableHeight / CGFloat(rows)
+
+    return headerHeight + topInset + (CGFloat(row) + 0.5) * rowBandHeight
+}
+
+/// Calculates resizable left and right column spans based on how many ports each side has.
+/// Increased center gap so input/output columns breathe more.
+func rackGearColumnSpans(
+    width: CGFloat,
+    inputCount: Int,
+    outputCount: Int
+) -> (left: ClosedRange<CGFloat>, right: ClosedRange<CGFloat>) {
+    let outerInset: CGFloat = 24
+    let centerGap: CGFloat = 110
+
+    let usableWidth = max(width - (outerInset * 2) - centerGap, 120)
+
+    let inputWeight = max(CGFloat(inputCount), 1)
+    let outputWeight = max(CGFloat(outputCount), 1)
+    let totalWeight = inputWeight + outputWeight
+
+    let leftWidth = usableWidth * (inputWeight / totalWeight)
+    let leftMin = outerInset
+    let leftMax = leftMin + leftWidth
+
+    let rightMin = leftMax + centerGap
+    let rightMax = width - outerInset
+
+    return (leftMin...leftMax, rightMin...rightMax)
+}
+func rackGearPortX(idx: Int, total: Int, span: ClosedRange<CGFloat>) -> CGFloat
+{
+    let minX = span.lowerBound
+    let maxX = span.upperBound
+    let usableWidth = maxX - minX
+
+    guard total > 0 else { return (minX + maxX) / 2 }
+    if total == 1 { return minX + usableWidth / 2 }
+
+    let step = usableWidth / CGFloat(total - 1)
+    return minX + CGFloat(idx) * step
+}
+//MARK: - RackCanvasView
 struct RackCanvasView: View {
     @EnvironmentObject var appState: AppState
     @State private var mousePos: CGPoint = .zero
