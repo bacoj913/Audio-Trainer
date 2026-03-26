@@ -20,7 +20,7 @@ struct CanvasView: View {
                     .onTapGesture {
                         appState.cancelConnecting()
                     }
-                    .gesture(
+                    .lowPriorityGesture(
                         DragGesture(minimumDistance: 4)
                             .onChanged { value in
                                 if appState.connectingFromId != nil {
@@ -74,11 +74,7 @@ struct CanvasView: View {
                     }
 
                     ForEach(appState.instances) { instance in
-                        NodeView(instance: instance)
-                            .position(
-                                x: instance.position.x + nodeHalfWidth(for: instance),
-                                y: instance.position.y + nodeHalfHeight(for: instance)
-                            )
+                        PositionedNodeView(instance: instance)
                             .zIndex(1)
                     }
                 }
@@ -153,24 +149,6 @@ struct CanvasView: View {
         }
     }
 
-    // MARK: - Helpers
-    private func nodeHalfWidth(for instance: NodeInstance) -> CGFloat {
-        let comp = Components.all[instance.type]
-        return comp?.isRack == true ? 100 : NodeView.width / 2
-    }
-    private func nodeHalfHeight(for instance: NodeInstance) -> CGFloat {
-        let comp = Components.all[instance.type]
-
-        if comp?.isRack == true {
-            return 30
-        }
-
-        if let comp {
-            return standardNodeHeight(for: comp) / 2
-        }
-
-        return 30
-    }
     // MARK: - Draw connections
     private func drawConnections(ctx: GraphicsContext) {
         for conn in appState.connections {
@@ -315,5 +293,33 @@ struct ConnectionShape: Shape {
                    control1: CGPoint(x: src.x + cx, y: src.y),
                    control2: CGPoint(x: dst.x - cx, y: dst.y))
         return p.strokedPath(StrokeStyle(lineWidth: 12))
+    }
+}
+
+// MARK: - Positioned Node View
+/// Wraps NodeView and observes the NodeInstance directly so that position changes
+/// during drag cause this view — and its .position() modifier — to re-render.
+/// CanvasView only observes AppState, not individual NodeInstances, so without this
+/// wrapper the .position() modifier would never update when instance.position changes.
+private struct PositionedNodeView: View {
+    @ObservedObject var instance: NodeInstance
+
+    var body: some View {
+        NodeView(instance: instance)
+            .position(
+                x: instance.position.x + halfWidth,
+                y: instance.position.y + halfHeight
+            )
+    }
+
+    private var halfWidth: CGFloat {
+        let comp = Components.all[instance.type]
+        return comp?.isRack == true ? 100 : NodeView.width / 2
+    }
+
+    private var halfHeight: CGFloat {
+        guard let comp = Components.all[instance.type] else { return 30 }
+        if comp.isRack { return 30 }
+        return standardNodeHeight(for: comp) / 2
     }
 }

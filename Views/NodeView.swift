@@ -245,10 +245,9 @@ struct StandardNodeView: View {
                 }
                 .onEnded { _ in
                     dragStartPos = nil
-                },
-            including: .gesture
-            )
-// MARK: - Per-port interactive dots on card edges (overlay applied after gesture to avoid gesture masking)
+                }
+        )
+// MARK: - Per-port interactive dots on card edges
         .overlay {
             GeometryReader { geo in
                 let rowCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
@@ -550,10 +549,9 @@ struct StandardNodeView: View {
                 }
                 .onEnded { _ in
                     dragStartPos = nil
-                },
-            including: .gesture
-            )
-//MARK: - Per-port interactive dots on card edges (overlay applied after gesture to avoid gesture masking)
+                }
+        )
+//MARK: - Per-port interactive dots on card edges
            .overlay {
                 GeometryReader { geo in
                     let rowCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
