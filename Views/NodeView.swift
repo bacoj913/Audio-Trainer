@@ -230,7 +230,25 @@ struct StandardNodeView: View {
                         lineWidth: appState.connectingFromId == instance.id ? 2 : 1)
         )
         .shadow(color: .black.opacity(isHovered ? 0.14 : 0.08), radius: isHovered ? 10 : 5, x: 0, y: isHovered ? 4 : 2)
-// MARK: - Per-port interactive dots on card edges
+        .onHover { isHovered = $0 }
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 4)
+                .onChanged { value in
+                    guard appState.connectingFromId == nil else { return }
+                    if dragStartPos == nil { dragStartPos = instance.position }
+                    guard let start = dragStartPos else { return }
+                    instance.position = CGPoint(
+                        x: max(0, start.x + value.translation.width),
+                        y: max(0, start.y + value.translation.height)
+                    )
+                }
+                .onEnded { _ in
+                    dragStartPos = nil
+                },
+            including: .gesture
+            )
+// MARK: - Per-port interactive dots on card edges (overlay applied after gesture to avoid gesture masking)
         .overlay {
             GeometryReader { geo in
                 let rowCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
@@ -274,24 +292,6 @@ struct StandardNodeView: View {
                 }
             }
         }
-        .onHover { isHovered = $0 }
-        .contentShape(RoundedRectangle(cornerRadius: 9))
-        .gesture(
-            DragGesture(minimumDistance: 4)
-                .onChanged { value in
-                    guard appState.connectingFromId == nil else { return }
-                    if dragStartPos == nil { dragStartPos = instance.position }
-                    guard let start = dragStartPos else { return }
-                    instance.position = CGPoint(
-                        x: max(0, start.x + value.translation.width),
-                        y: max(0, start.y + value.translation.height)
-                    )
-                }
-                .onEnded { _ in
-                    dragStartPos = nil
-                },
-            including: .all
-            )
         }
     }
 
@@ -535,7 +535,25 @@ struct StandardNodeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 9))
             .shadow(color: .black.opacity(0.08), radius: 5, x: 0, y: 2)
             .overlay(RoundedRectangle(cornerRadius: 9).stroke(Color.primary.opacity(0.08), lineWidth: 1))
-//MARK: -Per-port interactive dots on card edges
+        .onHover { isHovered = $0 }
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 4)
+                .onChanged { value in
+                    guard appState.connectingFromId == nil else { return }
+                    if dragStartPos == nil { dragStartPos = instance.position }
+                    guard let start = dragStartPos else { return }
+                    instance.position = CGPoint(
+                        x: max(0, start.x + value.translation.width),
+                        y: max(0, start.y + value.translation.height)
+                    )
+                }
+                .onEnded { _ in
+                    dragStartPos = nil
+                },
+            including: .gesture
+            )
+//MARK: - Per-port interactive dots on card edges (overlay applied after gesture to avoid gesture masking)
            .overlay {
                 GeometryReader { geo in
                     let rowCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
@@ -579,24 +597,6 @@ struct StandardNodeView: View {
                     }
                 }
            }
-        .onHover { isHovered = $0 }
-        .contentShape(RoundedRectangle(cornerRadius: 9))
-        .gesture(
-            DragGesture(minimumDistance: 4)
-                .onChanged { value in
-                    guard appState.connectingFromId == nil else { return }
-                    if dragStartPos == nil { dragStartPos = instance.position }
-                    guard let start = dragStartPos else { return }
-                    instance.position = CGPoint(
-                        x: max(0, start.x + value.translation.width),
-                        y: max(0, start.y + value.translation.height)
-                    )
-                }
-                .onEnded { _ in
-                    dragStartPos = nil
-                },
-            including: .all
-            )
         }
     }
 
