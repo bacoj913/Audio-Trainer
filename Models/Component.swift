@@ -11,28 +11,106 @@ struct PortInfo {
 }
 // MARK: - Port Group
 struct PortGroup {
-    let connector: String      // "XLR", "AES", "Speakon"
+    let connector: String
     let count: Int
-    let signalType: String     // "line", "aes", "speaker"
+    let signalType: String
+
+    let channelsPerPort: Int
+    let transport: String?
+    let isNetwork: Bool
+    let bundleStyle: BundleStyle
+
+    enum BundleStyle {
+        case single
+        case stereoPair
+        case multichannel
+        case network
+    }
+
+    init(
+        connector: String,
+        count: Int,
+        signalType: String,
+        channelsPerPort: Int? = nil,
+        transport: String? = nil,
+        isNetwork: Bool? = nil,
+        bundleStyle: BundleStyle? = nil
+    ) {
+        let normalized = signalType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        self.connector = connector
+        self.count = count
+        self.signalType = signalType
+
+        // Defaults that auto-apply based on signal type
+        switch normalized {
+        case "aes", "aes3":
+            self.channelsPerPort = channelsPerPort ?? 2
+            self.transport = transport ?? "AES"
+            self.isNetwork = isNetwork ?? false
+            self.bundleStyle = bundleStyle ?? .stereoPair
+
+        case "dante", "aes67", "milan", "avb", "networkaudio":
+            self.channelsPerPort = channelsPerPort ?? 64
+            self.transport = transport ?? {
+                switch normalized {
+                case "networkaudio": return "Network"
+                default: return signalType.uppercased()
+                }
+            }()
+            self.isNetwork = isNetwork ?? true
+            self.bundleStyle = bundleStyle ?? .network
+
+        default:
+            self.channelsPerPort = channelsPerPort ?? 1
+            self.transport = transport
+            self.isNetwork = isNetwork ?? false
+            self.bundleStyle = bundleStyle ?? .single
+        }
+    }
 
     func labels(for side: String) -> [String] {
         guard count > 0 else { return [] }
 
         let direction = side == "in" ? "In" : "Out"
-        let baseLabel = "\(connector) \(direction)"
+        let normalized = signalType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-        if count == 1 {
-            return [baseLabel]
+        // Special handling for AES/AES3 so pairs enumerate as 1/2, 3/4, etc.
+        if normalized == "aes" || normalized == "aes3" {
+            if count == 1 {
+                return ["AES \(direction) 1/2"]
+            }
+
+            return (0..<count).map { idx in
+                let first = idx * 2 + 1
+                let second = first + 1
+                return "AES \(direction) \(first)/\(second)"
+            }
         }
 
-        return (1...count).map { "\(baseLabel) \($0)" }
+        // Network labels: Dante In 1, Dante In 2, etc.
+        if isNetwork, let transport {
+            if count == 1 {
+                return ["\(transport) \(direction)"]
+            }
+
+            return (1...count).map { "\(transport) \(direction) \($0)" }
+        }
+
+        // Standard labels: XLR In 1, XLR Out 2, etc.
+        let base = "\(connector) \(direction)"
+
+        if count == 1 {
+            return [base]
+        }
+
+        return (1...count).map { "\(base) \($0)" }
     }
 
     var signalTypes: [String] {
         Array(repeating: signalType, count: count)
     }
 }
-
 extension PortInfo {
     init(inputGroups: [PortGroup], outputGroups: [PortGroup]) {
         self.init(
