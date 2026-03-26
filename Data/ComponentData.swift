@@ -819,7 +819,7 @@ enum Components {
             ],
             outputGroups: [
                 PortGroup(connector: "XLR", count: 16, signalType: "line"),
-                PortGroup(connector: "AES", count: 4, signalType: "aes"),
+                PortGroup(connector: "XLR", count: 4, signalType: "aes"),
                 PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante")
             ],
             desc: "24-in/8-out stage box, Dante",

@@ -124,11 +124,10 @@ extension Color {
         case "antenna":    return Color(.systemGray)
         case "madi":       return Color(.systemTeal)
         case "fiber":      return Color(.systemOrange)
-        case "aes":        return Color(.systemPurple)
-        case "dante":      return Color(.systemGreen)
-        case "milan":      return Color(.systemGreen)
-        case "optical":    return Color(.systemBlue)
-        case "rf":         return Color(.systemCyan)
+        case "optical":    return Color(.systemOrange)
+        case "AES":        return Color(.systemPurple)
+        case "Dante":      return Color(.systemGreen)
+        case "Milan":      return Color(.systemGreen)
         default:           return Color(.systemGray)
         }
     }
