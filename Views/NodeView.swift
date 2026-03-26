@@ -100,10 +100,10 @@ func standardNodeWidth(for comp: Component) -> CGFloat {
 extension NodeView {
     static let width: CGFloat = 168
     static let portDotSize: CGFloat = 10
-    static let portHitSize: CGFloat = 50
+    static let portHitSize: CGFloat = 54
     static let portXMarkSize: CGFloat = 5
     
-    static let portLabelGap: CGFloat = 10
+    static let portLabelGap: CGFloat = 12
     
     static let standardTopReserved: CGFloat = 96
     static let standardBodyTopInset: CGFloat = 16
@@ -113,6 +113,43 @@ extension NodeView {
     static let standardPortSpacing: CGFloat = 26
 }
 
+// MARK: - Multichannel Ports
+struct VisualPort: Identifiable {
+    let id = UUID()
+    let label: String
+    let signalType: String
+    let bundleStyle: PortGroup.BundleStyle
+}
+
+func makeVisualPorts(labels: [String], signalTypes: [String]) -> [VisualPort] {
+    labels.enumerated().map { idx, label in
+        let signalType = signalTypes.indices.contains(idx)
+            ? signalTypes[idx]
+            : (signalTypes.first ?? "line")
+
+        let normalized = signalType
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        let bundleStyle: PortGroup.BundleStyle
+        switch normalized {
+        case "aes", "aes3":
+            bundleStyle = .stereoPair
+        case "madi":
+            bundleStyle = .multichannel
+        case "dante", "aes67", "milan", "avb", "network":
+            bundleStyle = .network
+        default:
+            bundleStyle = .single
+        }
+
+        return VisualPort(
+            label: label,
+            signalType: signalType,
+            bundleStyle: bundleStyle
+        )
+    }
+}
 // MARK: - Node View
 struct NodeView: View {
     @ObservedObject var instance: NodeInstance
@@ -250,20 +287,26 @@ struct StandardNodeView: View {
 // MARK: - Per-port interactive dots on card edges
         .overlay {
             GeometryReader { geo in
-                let rowCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
+                let inputPorts = makeVisualPorts(
+                    labels: comp.ports.inputs,
+                    signalTypes: comp.inputs
+                )
+                let outputPorts = makeVisualPorts(
+                    labels: comp.ports.outputs,
+                    signalTypes: comp.outputs
+                )
 
-                ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, portName in
-                    let sigType = comp.inputs.indices.contains(idx)
-                        ? comp.inputs[idx]
-                        : (comp.inputs.first ?? "line")
+                let rowCount = max(inputPorts.count, outputPorts.count)
 
+                ForEach(Array(inputPorts.enumerated()), id: \.offset) { idx, port in
                     PortEdgeDot(
                         instance: instance,
                         portIndex: idx,
                         side: "in",
-                        total: comp.ports.inputs.count,
-                        label: portName,
-                        signalType: sigType
+                        total: inputPorts.count,
+                        label: port.label,
+                        signalType: port.signalType,
+                        bundleStyle: port.bundleStyle
                     )
                     .position(
                         x: 0,
@@ -271,18 +314,15 @@ struct StandardNodeView: View {
                     )
                 }
 
-                ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, portName in
-                    let sigType = comp.outputs.indices.contains(idx)
-                        ? comp.outputs[idx]
-                        : (comp.outputs.first ?? "line")
-
+                ForEach(Array(outputPorts.enumerated()), id: \.offset) { idx, port in
                     PortEdgeDot(
                         instance: instance,
                         portIndex: idx,
                         side: "out",
-                        total: comp.ports.outputs.count,
-                        label: portName,
-                        signalType: sigType
+                        total: outputPorts.count,
+                        label: port.label,
+                        signalType: port.signalType,
+                        bundleStyle: port.bundleStyle
                     )
                     .position(
                         x: geo.size.width,
@@ -297,112 +337,201 @@ struct StandardNodeView: View {
     // MARK: - Port Edge Dot
     /// An interactive circle on the left (input) or right (output) edge of a node card.
     /// Color is based on signal type. Reports canvas-space center via PortAnchorPref.
-    struct PortEdgeDot: View {
-        @ObservedObject var instance: NodeInstance
-        let portIndex: Int
-        let side: String        // "in" or "out"
-        let total: Int
-        var label: String = ""
-        var signalType: String = "line"
-        @EnvironmentObject var appState: AppState
+struct PortEdgeDot: View {
+    @ObservedObject var instance: NodeInstance
+    let portIndex: Int
+    let side: String
+    let total: Int
+    var label: String = ""
+    var signalType: String = "line"
+    var bundleStyle: PortGroup.BundleStyle = .single
+    @EnvironmentObject var appState: AppState
         
-        private var color: Color { Color.signalTypeColor(signalType) }
+    private var color: Color { Color.signalTypeColor(signalType) }
         
-        private var isSource: Bool {
-            appState.connectingFromId == instance.id && appState.connectingFromPortIndex == portIndex
-        }
-        
-        private var isConnecting: Bool { appState.connectingFromId != nil }
-        
-        private var isConnected: Bool {
-            if side == "in" {
-                return appState.activeTab.connections.contains {
-                    $0.toId == instance.id && $0.toPortIndex == portIndex
-                }
-            } else {
-                return appState.activeTab.connections.contains {
-                    $0.fromId == instance.id && $0.fromPortIndex == portIndex
-                }
+    private var isSource: Bool {
+        appState.connectingFromId == instance.id && appState.connectingFromPortIndex == portIndex
+    }
+    
+    private var isConnecting: Bool { appState.connectingFromId != nil }
+    
+    private var isConnected: Bool {
+        if side == "in" {
+            return appState.activeTab.connections.contains {
+                $0.toId == instance.id && $0.toPortIndex == portIndex
             }
-        }
-        
-        var body: some View {
-            // The view's layout frame is exactly the 14×14 dot circle.
-            // .position() in the overlay will center the dot precisely at the card edge.
-            // The label hangs inside the card as a non-interactive overlay.
-            dotCircle
-                .overlay(alignment: side == "in" ? .leading : .trailing) {
-                    if !label.isEmpty {
-                        Text(label)
-                            .font(.system(size: 8))
-                            .foregroundColor(.primary.opacity(0.65))
-                            .lineLimit(1)
-                            .fixedSize()
-                            .allowsHitTesting(false)
-                            .offset(
-                                x: side == "in"
-                                ? (NodeView.portHitSize / 2 + NodeView.portLabelGap)
-                                : -(NodeView.portHitSize / 2 + NodeView.portLabelGap)
-                            )
-                    }
-                }
-        }
-        
-        private var dotCircle: some View {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: NodeView.portHitSize, height: NodeView.portHitSize)
-                Circle()
-                    .fill(
-                        color
-                    )
-                    .frame(width: NodeView.portDotSize, height: NodeView.portDotSize)
-                    .overlay(Circle().stroke(Color.white, lineWidth: 1.25))
-                    .overlay {
-                        if isConnected && side == "in" && !isConnecting {
-                            Image(systemName: "xmark")
-                                .font(.system(size: NodeView.portXMarkSize, weight: .black))
-                                .foregroundColor(.white)
-                        }
-                    }
+        } else {
+            return appState.activeTab.connections.contains {
+                $0.fromId == instance.id && $0.fromPortIndex == portIndex
             }
-            .contentShape(Rectangle())
-            .shadow(
-                color: color.opacity(0.5),
-                radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
-            )
-            .background(
-                GeometryReader { geo in
-                    Color.clear.preference(
-                        key: PortAnchorPref.self,
-                        value: ["\(instance.id)-\(side)-\(portIndex)":
-                                    geo.frame(in: .named("canvas")).center]
-                    )
-                }
-            )
-            .onTapGesture {
-                if side == "out" {
-                    if !isConnecting {
-                        appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
-                    } else if isSource {
-                        appState.cancelConnecting()
-                    }
-                } else {
-                    if isConnecting {
-                        appState.finishConnecting(toId: instance.id, toPortIndex: portIndex)
-                    } else if isConnected {
-                        appState.disconnectInput(instanceId: instance.id, portIndex: portIndex)
-                    }
-                }
-            }
-            .help(
-                side == "in"
-                ? (isConnected ? "Click to disconnect" : "Input — click to connect")
-                : "Output — click to start connection"
-            )
         }
     }
+    
+    var body: some View {
+        // The view's layout frame is exactly the 14×14 dot circle.
+        // .position() in the overlay will center the dot precisely at the card edge.
+        // The label hangs inside the card as a non-interactive overlay.
+        dotCircle
+            .overlay(alignment: side == "in" ? .leading : .trailing) {
+                if !label.isEmpty {
+                    Text(label)
+                        .font(.system(size: 8))
+                        .foregroundColor(.primary.opacity(0.65))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .allowsHitTesting(false)
+                        .offset(
+                            x: side == "in"
+                            ? (NodeView.portHitSize / 2 + NodeView.portLabelGap)
+                            : -(NodeView.portHitSize / 2 + NodeView.portLabelGap)
+                        )
+                }
+            }
+    }
+        
+    private var dotCircle: some View {
+        ZStack {
+            Circle()
+                .fill(Color.clear)
+                .frame(width: NodeView.portHitSize, height: NodeView.portHitSize)
+
+            PortGlyph(
+                color: color,
+                bundleStyle: bundleStyle,
+                showDisconnectMark: isConnected && side == "in" && !isConnecting
+            )
+        }
+        .contentShape(Rectangle())
+        .shadow(
+            color: color.opacity(0.5),
+            radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
+        )
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: PortAnchorPref.self,
+                    value: ["\(instance.id)-\(side)-\(portIndex)":
+                                geo.frame(in: .named("canvas")).center]
+                )
+            }
+        )
+        .onTapGesture {
+            if side == "out" {
+                if !isConnecting {
+                    appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
+                } else if isSource {
+                    appState.cancelConnecting()
+                }
+            } else {
+                if isConnecting {
+                    appState.finishConnecting(toId: instance.id, toPortIndex: portIndex)
+                } else if isConnected {
+                    appState.disconnectInput(instanceId: instance.id, portIndex: portIndex)
+                }
+            }
+        }
+        .help(
+            side == "in"
+            ? (isConnected ? "Click to disconnect" : "Input — click to connect")
+            : "Output — click to start connection"
+        )
+    }
+}
+
+// MARK: - Multichannel Port Glyph
+struct PortGlyph: View {
+    let color: Color
+    let bundleStyle: PortGroup.BundleStyle
+    let showDisconnectMark: Bool
+
+    var body: some View {
+        switch bundleStyle {
+        case .single:
+            Circle()
+                .fill(color)
+                .frame(width: NodeView.portDotSize, height: NodeView.portDotSize)
+                .overlay(Circle().stroke(Color.white, lineWidth: 1.25))
+                .overlay {
+                    if showDisconnectMark {
+                        Image(systemName: "xmark")
+                            .font(.system(size: NodeView.portXMarkSize, weight: .black))
+                            .foregroundColor(.white)
+                    }
+                }
+
+        case .stereoPair:
+            HStack(spacing: 2) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 5, height: 5)
+                Circle()
+                    .fill(color)
+                    .frame(width: 5, height: 5)
+            }
+            .padding(.horizontal, 3)
+            .padding(.vertical, 2)
+            .background(
+                Capsule()
+                    .fill(color.opacity(0.18))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.white, lineWidth: 1)
+            )
+            .overlay {
+                if showDisconnectMark {
+                    Image(systemName: "xmark")
+                        .font(.system(size: NodeView.portXMarkSize, weight: .black))
+                        .foregroundColor(.white)
+                }
+            }
+
+        case .multichannel:
+            RoundedRectangle(cornerRadius: 3)
+                .fill(color)
+                .frame(width: 15, height: 8)
+                .overlay(
+                    HStack(spacing: 2) {
+                        Circle().fill(.white.opacity(0.85)).frame(width: 2, height: 2)
+                        Circle().fill(.white.opacity(0.85)).frame(width: 2, height: 2)
+                        Circle().fill(.white.opacity(0.85)).frame(width: 2, height: 2)
+                    }
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(Color.white, lineWidth: 1)
+                )
+                .overlay {
+                    if showDisconnectMark {
+                        Image(systemName: "xmark")
+                            .font(.system(size: NodeView.portXMarkSize, weight: .black))
+                            .foregroundColor(.white)
+                    }
+                }
+
+        case .network:
+            RoundedRectangle(cornerRadius: 3)
+                .fill(color)
+                .frame(width: 15, height: 10)
+                .overlay(
+                    Image(systemName: "network")
+                        .font(.system(size: 6, weight: .bold))
+                        .foregroundColor(.white)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(Color.white, lineWidth: 1)
+                )
+                .overlay {
+                    if showDisconnectMark {
+                        Image(systemName: "xmark")
+                            .font(.system(size: NodeView.portXMarkSize, weight: .black))
+                            .foregroundColor(.white)
+                    }
+                }
+        }
+    }
+}
     // MARK: - Port List Section (all named physical ports — informational display)
     struct PortListSection: View {
         let inputs: [String]
@@ -554,20 +683,26 @@ struct StandardNodeView: View {
 //MARK: - Per-port interactive dots on card edges
            .overlay {
                 GeometryReader { geo in
-                    let rowCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
+                    let inputPorts = makeVisualPorts(
+                        labels: comp.ports.inputs,
+                        signalTypes: comp.inputs
+                    )
+                    let outputPorts = makeVisualPorts(
+                        labels: comp.ports.outputs,
+                        signalTypes: comp.outputs
+                    )
 
-                    ForEach(Array(comp.ports.inputs.enumerated()), id: \.offset) { idx, portName in
-                        let sigType = comp.inputs.indices.contains(idx)
-                            ? comp.inputs[idx]
-                            : (comp.inputs.first ?? "line")
+                    let rowCount = max(inputPorts.count, outputPorts.count)
 
+                    ForEach(Array(inputPorts.enumerated()), id: \.offset) { idx, port in
                         PortEdgeDot(
                             instance: instance,
                             portIndex: idx,
                             side: "in",
-                            total: comp.ports.inputs.count,
-                            label: portName,
-                            signalType: sigType
+                            total: inputPorts.count,
+                            label: port.label,
+                            signalType: port.signalType,
+                            bundleStyle: port.bundleStyle
                         )
                         .position(
                             x: 0,
@@ -575,18 +710,15 @@ struct StandardNodeView: View {
                         )
                     }
 
-                    ForEach(Array(comp.ports.outputs.enumerated()), id: \.offset) { idx, portName in
-                        let sigType = comp.outputs.indices.contains(idx)
-                            ? comp.outputs[idx]
-                            : (comp.outputs.first ?? "line")
-
+                    ForEach(Array(outputPorts.enumerated()), id: \.offset) { idx, port in
                         PortEdgeDot(
                             instance: instance,
                             portIndex: idx,
                             side: "out",
-                            total: comp.ports.outputs.count,
-                            label: portName,
-                            signalType: sigType
+                            total: outputPorts.count,
+                            label: port.label,
+                            signalType: port.signalType,
+                            bundleStyle: port.bundleStyle
                         )
                         .position(
                             x: geo.size.width,

@@ -36,13 +36,14 @@ struct PortGroup {
         isNetwork: Bool? = nil,
         bundleStyle: BundleStyle? = nil
     ) {
-        let normalized = signalType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalized = signalType
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
 
         self.connector = connector
         self.count = count
         self.signalType = signalType
 
-        // Defaults that auto-apply based on signal type
         switch normalized {
         case "aes", "aes3":
             self.channelsPerPort = channelsPerPort ?? 2
@@ -54,12 +55,21 @@ struct PortGroup {
             self.channelsPerPort = channelsPerPort ?? 64
             self.transport = transport ?? {
                 switch normalized {
-                case "networkaudio": return "Network"
-                default: return signalType.uppercased()
+                case "dante": return "Dante"
+                case "aes67": return "AES67"
+                case "milan": return "Milan"
+                case "avb": return "AVB"
+                default: return "Network"
                 }
             }()
             self.isNetwork = isNetwork ?? true
             self.bundleStyle = bundleStyle ?? .network
+
+        case "madi":
+            self.channelsPerPort = channelsPerPort ?? 64
+            self.transport = transport ?? "MADI"
+            self.isNetwork = isNetwork ?? false
+            self.bundleStyle = bundleStyle ?? .multichannel
 
         default:
             self.channelsPerPort = channelsPerPort ?? 1
@@ -73,9 +83,10 @@ struct PortGroup {
         guard count > 0 else { return [] }
 
         let direction = side == "in" ? "In" : "Out"
-        let normalized = signalType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalized = signalType
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
 
-        // Special handling for AES/AES3 so pairs enumerate as 1/2, 3/4, etc.
         if normalized == "aes" || normalized == "aes3" {
             if count == 1 {
                 return ["AES \(direction) 1/2"]
@@ -88,7 +99,6 @@ struct PortGroup {
             }
         }
 
-        // Network labels: Dante In 1, Dante In 2, etc.
         if isNetwork, let transport {
             if count == 1 {
                 return ["\(transport) \(direction)"]
@@ -97,14 +107,13 @@ struct PortGroup {
             return (1...count).map { "\(transport) \(direction) \($0)" }
         }
 
-        // Standard labels: XLR In 1, XLR Out 2, etc.
-        let base = "\(connector) \(direction)"
+        let baseLabel = "\(connector) \(direction)"
 
         if count == 1 {
-            return [base]
+            return [baseLabel]
         }
 
-        return (1...count).map { "\(base) \($0)" }
+        return (1...count).map { "\(baseLabel) \($0)" }
     }
 
     var signalTypes: [String] {
