@@ -346,17 +346,16 @@ struct PortEdgeDot: View {
     var label: String = ""
     var signalType: String = "line"
     var bundleStyle: PortGroup.BundleStyle = .single
-
     @EnvironmentObject var appState: AppState
-
+        
     private var color: Color { Color.signalTypeColor(signalType) }
-
+        
     private var isSource: Bool {
         appState.connectingFromId == instance.id && appState.connectingFromPortIndex == portIndex
     }
-
+    
     private var isConnecting: Bool { appState.connectingFromId != nil }
-
+    
     private var isConnected: Bool {
         if side == "in" {
             return appState.activeTab.connections.contains {
@@ -368,15 +367,21 @@ struct PortEdgeDot: View {
             }
         }
     }
-
+    
     var body: some View {
         ZStack {
-            // horizontal hit area, but compact vertically so rows do not overlap
-            Rectangle()
-                .fill(Color.clear)
+            Color.clear
                 .frame(width: NodeView.portHitWidth, height: NodeView.portHitHeight)
-
-            glyphWithAnchor
+            
+            PortGlyph(
+                color: color,
+                bundleStyle: bundleStyle,
+                showDisconnectMark: isConnected && side == "in" && !isConnecting
+            )
+            .shadow(
+                color: color.opacity(0.5),
+                radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
+            )
         }
         .overlay(alignment: side == "in" ? .leading : .trailing) {
             if !label.isEmpty {
@@ -388,12 +393,21 @@ struct PortEdgeDot: View {
                     .allowsHitTesting(false)
                     .offset(
                         x: side == "in"
-                            ? (NodeView.portHitWidth / 2 + NodeView.portLabelGap)
-                            : -(NodeView.portHitWidth / 2 + NodeView.portLabelGap)
+                        ? (NodeView.portHitWidth / 2 + NodeView.portLabelGap)
+                        : -(NodeView.portHitWidth / 2 + NodeView.portLabelGap)
                     )
             }
         }
         .contentShape(Rectangle())
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: PortAnchorPref.self,
+                    value: ["\(instance.id)-\(side)-\(portIndex)":
+                                geo.frame(in: .named("canvas")).center]
+                )
+            }
+        )
         .onTapGesture {
             if side == "out" {
                 if !isConnecting {
