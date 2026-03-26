@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 struct SidebarView: View {
     @EnvironmentObject var appState: AppState
     @State private var searchText = ""
+    @State private var collapsedCategories: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,18 +38,45 @@ struct SidebarView: View {
                     ForEach(categoryOrder, id: \.self) { category in
                         let items = filteredItems(in: category)
                         if !items.isEmpty {
+                            let isCollapsed = collapsedCategories.contains(category)
                             Section {
-                                ForEach(items, id: \.id) { comp in
-                                    PaletteItemView(comp: comp)
+                                if !isCollapsed {
+                                    ForEach(items, id: \.id) { comp in
+                                        PaletteItemView(comp: comp)
+                                    }
                                 }
                             } header: {
-                                Text(category.uppercased())
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .foregroundColor(.secondary)
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        if isCollapsed {
+                                            collapsedCategories.remove(category)
+                                        } else {
+                                            collapsedCategories.insert(category)
+                                        }
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 7, weight: .semibold))
+                                            .foregroundColor(.secondary)
+                                            .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                                        Text(category.uppercased())
+                                            .font(.system(size: 9, weight: .semibold))
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        if isCollapsed {
+                                            Text("\(items.count)")
+                                                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                                .foregroundColor(.secondary.opacity(0.6))
+                                        }
+                                    }
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .background(.ultraThinMaterial)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }

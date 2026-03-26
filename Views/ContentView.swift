@@ -189,6 +189,7 @@ struct AppBodyView: View {
                         } else {
                             CanvasView()
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .clipped()
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

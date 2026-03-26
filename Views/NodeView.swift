@@ -282,20 +282,19 @@ struct StandardNodeView: View {
                     guard appState.connectingFromId == nil else { return }
                     if dragStartPos == nil { dragStartPos = instance.position }
                     guard let start = dragStartPos else { return }
-                    let s = appState.canvasScale
                     instance.position = CGPoint(
-                        x: max(0, start.x + value.translation.width / s),
-                        y: max(0, start.y + value.translation.height / s)
+                        x: max(0, start.x + value.translation.width),
+                        y: max(0, start.y + value.translation.height)
                     )
                 }
                 .onEnded { _ in
                     dragStartPos = nil
                 },
-            including: .gesture
+            including: .all
             )
         }
     }
-    
+
     // MARK: - Port Edge Dot
     /// An interactive circle on the left (input) or right (output) edge of a node card.
     /// Color is based on signal type. Reports canvas-space center via PortAnchorPref.
@@ -588,21 +587,19 @@ struct StandardNodeView: View {
                     guard appState.connectingFromId == nil else { return }
                     if dragStartPos == nil { dragStartPos = instance.position }
                     guard let start = dragStartPos else { return }
-                        
-                    let s = appState.canvasScale
                     instance.position = CGPoint(
-                        x: max(0, start.x + value.translation.width / s),
-                        y: max(0, start.y + value.translation.height / s)
+                        x: max(0, start.x + value.translation.width),
+                        y: max(0, start.y + value.translation.height)
                     )
                 }
                 .onEnded { _ in
                     dragStartPos = nil
                 },
-            including: .gesture
+            including: .all
             )
         }
     }
-    
+
     // MARK: - SF Symbol icon wrapper
     struct ComponentIcon: View {
         let name: String
