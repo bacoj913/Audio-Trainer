@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 // Height per rack unit (1U = 44.45mm physical, represented here as 44pt)
 private let unitHeight: CGFloat = 44
 // MARK: - Helpers
-/// Splits a side's ports into rows, independantly of ru.
+/// Splits a side's ports into rows, determined by ru-1.
 /// - Parameters:
 ///   - totalPorts: Total number of ports on that side.
 ///   - rackUnits: Rack height of the device.
@@ -140,11 +140,14 @@ struct RackCanvasView: View {
                     // Placed gear items (overlay on top of slot grid)
                     ForEach(tab.instances) { instance in
                         if let comp = Components.all[instance.type] {
-                            RackGearItem(instance: instance, comp: comp)
-                                .offset(
-                                    y: CGFloat(instance.rackSlot ?? 0)
-                                        * unitHeight
-                                )
+                            RackGearItem(
+                                instance: instance,
+                                comp: comp,
+                                rackCapacity: totalUnits
+                            )
+                            .offset(
+                                y: CGFloat(instance.rackSlot ?? 0) * unitHeight
+                            )
                         }
                     }
                 }
@@ -380,8 +383,11 @@ struct RackCanvasFacePort: View {
 struct RackGearItem: View {
     @ObservedObject var instance: NodeInstance
     let comp: Component
+    let rackCapacity: Int
     @EnvironmentObject var appState: AppState
     @State private var isHovered = false
+    @State private var dragYOffset: CGFloat = 0
+    @GestureState private var isDragging = false
 
     private var itemHeight: CGFloat {
         CGFloat(max(comp.rackUnits, 1)) * unitHeight
@@ -390,7 +396,18 @@ struct RackGearItem: View {
     private var headerHeight: CGFloat {
         28
     }
+    private var currentRackSlot: Int {
+        instance.rackSlot ?? 0
+    }
 
+    private var maxRackSlot: Int {
+        max(rackCapacity - max(comp.rackUnits, 1), 0)
+    }
+
+    private func clampedRackSlot(for translation: CGFloat) -> Int {
+        let deltaSlots = Int(round(translation / unitHeight))
+        return min(max(currentRackSlot + deltaSlots, 0), maxRackSlot)
+    }
     var body: some View {
         HStack(spacing: 0) {
             // Left indent to align with slot area (28pt label + 6pt padding)
@@ -515,7 +532,7 @@ struct RackGearItem: View {
 
                         let rowY = rackGearRowY(
                             row: row,
-                            rackUnits: visualRows,
+                            totalRows: visualRows,
                             height: geo.size.height,
                             headerHeight: headerHeight
                         )
@@ -572,10 +589,29 @@ struct RackGearItem: View {
             Color.clear.frame(width: 34)
         }
         .frame(height: itemHeight)
+        .offset(y: dragYOffset)
+        .zIndex(isDragging ? 1000 : 1)
         .onHover { isHovered = $0 }
+        .gesture(
+            DragGesture(minimumDistance: 2)
+                .updating($isDragging) { _, state, _ in
+                    state = true
+                }
+                .onChanged { value in
+                    dragYOffset = value.translation.height
+                }
+                .onEnded { value in
+                    let newSlot = clampedRackSlot(for: value.translation.height)
+
+                    withAnimation(.snappy(duration: 0.16)) {
+                        instance.rackSlot = newSlot
+                        dragYOffset = 0
+                    }
+                }
+        )
         .shadow(
-            color: .black.opacity(isHovered ? 0.12 : 0.04),
-            radius: isHovered ? 6 : 2,
+            color: .black.opacity(isDragging ? 0.16 : (isHovered ? 0.12 : 0.04)),
+            radius: isDragging ? 8 : (isHovered ? 6 : 2),
             x: 0,
             y: 2
         )
