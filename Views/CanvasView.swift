@@ -20,7 +20,7 @@ struct CanvasView: View {
                     .onTapGesture {
                         appState.cancelConnecting()
                     }
-                    .gesture(
+                    .lowPriorityGesture(
                         DragGesture(minimumDistance: 4)
                             .onChanged { value in
                                 if appState.connectingFromId != nil {
