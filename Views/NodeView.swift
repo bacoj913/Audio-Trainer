@@ -8,7 +8,10 @@ import UniformTypeIdentifiers
 struct PortAnchorPref: PreferenceKey {
     typealias Value = [String: CGPoint]
     static var defaultValue: [String: CGPoint] = [:]
-    static func reduce(value: inout [String: CGPoint], nextValue: () -> [String: CGPoint]) {
+    static func reduce(
+        value: inout [String: CGPoint],
+        nextValue: () -> [String: CGPoint]
+    ) {
         value.merge(nextValue()) { $1 }
     }
 }
@@ -47,22 +50,23 @@ func bodyPortY(idx: Int, rowCount _: Int) -> CGFloat {
 /// - Returns: Total node height.
 func standardNodeHeight(for comp: Component) -> CGFloat {
     let portCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
-
+    
     if portCount <= 1 {
         return NodeView.standardTopReserved
-            + NodeView.standardMinBodyHeight
-            + NodeView.standardBottomPadding
+        + NodeView.standardMinBodyHeight
+        + NodeView.standardBottomPadding
     }
-
+    
     let portsHeight = CGFloat(portCount - 1) * NodeView.standardPortSpacing
     let bodyHeight = max(
         NodeView.standardMinBodyHeight,
-        NodeView.standardBodyTopInset + portsHeight + NodeView.standardBodyBottomInset
+        NodeView.standardBodyTopInset + portsHeight
+        + NodeView.standardBodyBottomInset
     )
-
+    
     return NodeView.standardTopReserved
-        + bodyHeight
-        + NodeView.standardBottomPadding
+    + bodyHeight
+    + NodeView.standardBottomPadding
 }
 /// Estimated text width for layout sizing without exact text measurement.
 /// - Parameters:
@@ -80,19 +84,93 @@ func standardNodeWidth(for comp: Component) -> CGFloat {
     let baseWidth: CGFloat = 168
     let innerPadding: CGFloat = 18
     let labelGapFromPort: CGFloat = 24
-
+    
     let longestInput = comp.ports.inputs.max(by: { $0.count < $1.count }) ?? ""
-    let longestOutput = comp.ports.outputs.max(by: { $0.count < $1.count }) ?? ""
-
+    let longestOutput =
+    comp.ports.outputs.max(by: { $0.count < $1.count }) ?? ""
+    
     let inputTextWidth = estimatedTextWidth(longestInput, fontSize: 8)
     let outputTextWidth = estimatedTextWidth(longestOutput, fontSize: 8)
-
-    let totalLabelWidth = inputTextWidth + outputTextWidth + (labelGapFromPort * 2) + (innerPadding * 2)
-
+    
+    let totalLabelWidth =
+    inputTextWidth + outputTextWidth + (labelGapFromPort * 2)
+    + (innerPadding * 2)
+    
     return max(baseWidth, totalLabelWidth)
 }
 
+/// Returns the y-position for a rack port based on its index and the rack height.
+/// - Parameters:
+///   - idx: The port index on that side.
+///   - total: The total number of ports on that side.
+///   - rackUnits: The height of the device in rack units.
+/// - Returns: The vertical center position for that port in the rack view.
+func rackPortY(idx: Int, total: Int, rackUnits: Int) -> CGFloat {
+    let faceTop = 3 + NodeView.rackHeaderHeight + NodeView.rackFaceTopInset
+    
+    let faceHeight =
+    CGFloat(rackUnits) * NodeView.rackUnitHeight
+    + CGFloat(max(0, rackUnits - 1)) * NodeView.rackDividerHeight
+    - NodeView.rackFaceTopInset
+    - NodeView.rackFaceBottomInset
+    
+    guard total > 0 else { return faceTop + faceHeight / 2 }
+    if total == 1 { return faceTop + faceHeight / 2 }
+    
+    let maxSpread = faceHeight / CGFloat(total - 1)
+    let step = min(NodeView.rackPortSpacing, maxSpread)
+    let usedHeight = step * CGFloat(total - 1)
+    let startY = faceTop + (faceHeight - usedHeight) / 2
+    
+    return startY + CGFloat(idx) * step
+}
 
+/// - Parameters:
+///   - idx: The port index on that side.
+///   - total: The total number of ports on that side.
+///   - rackWidth: The total width of the rack node.
+///   - side: The side of the rack, either "in" or "out".
+/// - Returns: The horizontal center position for that port in the rack view.
+func rackPortX(idx: Int, total: Int, rackWidth: CGFloat, side: String) -> CGFloat {
+    let outerInset: CGFloat = 20
+    let centerGap: CGFloat = 20
+
+    let halfWidth = rackWidth / 2
+    let leftMin = outerInset
+    let leftMax = halfWidth - centerGap / 2
+    let rightMin = halfWidth + centerGap / 2
+    let rightMax = rackWidth - outerInset
+
+    let minX = side == "in" ? leftMin : rightMin
+    let maxX = side == "in" ? leftMax : rightMax
+    let usableWidth = maxX - minX
+
+    guard total > 0 else { return rackWidth / 2 }
+    if total == 1 { return minX + usableWidth / 2 }
+
+    let step = usableWidth / CGFloat(total - 1)
+    return minX + CGFloat(idx) * step
+}
+
+/// Returns the y-position for the input row on the rack face.
+/// - Parameter rackUnits: The height of the device in rack units.
+/// - Returns: The vertical center position for the input row.
+func rackInputRowY(rackUnits: Int) -> CGFloat {
+    let faceTop = 3 + NodeView.rackHeaderHeight
+    return faceTop + NodeView.rackPortRowTopOffset
+}
+
+/// Returns the y-position for the output row on the rack face.
+/// - Parameter rackUnits: The height of the device in rack units.
+/// - Returns: The vertical center position for the output row.
+func rackOutputRowY(rackUnits: Int) -> CGFloat {
+    let faceTop = 3 + NodeView.rackHeaderHeight
+    let faceHeight =
+        CGFloat(rackUnits) * NodeView.rackUnitHeight
+        + CGFloat(max(0, rackUnits - 1)) * NodeView.rackDividerHeight
+
+    return faceTop + faceHeight - NodeView.rackPortRowBottomOffset
+}
 
 // TODO: Add Ruleset for Intercom devices
 
@@ -112,6 +190,24 @@ extension NodeView {
     static let standardBottomPadding: CGFloat = 10
     static let standardMinBodyHeight: CGFloat = 24
     static let standardPortSpacing: CGFloat = 26
+    
+    static let rackWidth: CGFloat = 200
+    static let rackHeaderHeight: CGFloat = 28
+    static let rackUnitHeight: CGFloat = 20
+    static let rackDividerHeight: CGFloat = 1
+    
+    static let rackFaceTopInset: CGFloat = 8
+    static let rackFaceBottomInset: CGFloat = 8
+    
+    static let rackPortSpacing: CGFloat = 18
+    static let rackPortHitWidth: CGFloat = 28
+    static let rackPortHitHeight: CGFloat = 16
+    static let rackPortRowTopOffset: CGFloat = 18
+    static let rackPortRowBottomOffset: CGFloat = 18
+    
+    static let rackInputColumnX: CGFloat = 52
+    static let rackOutputColumnX: CGFloat = 148
+    
 }
 
 // MARK: - Multichannel Ports
@@ -124,14 +220,16 @@ struct VisualPort: Identifiable {
 
 func makeVisualPorts(labels: [String], signalTypes: [String]) -> [VisualPort] {
     labels.enumerated().map { idx, label in
-        let signalType = signalTypes.indices.contains(idx)
-            ? signalTypes[idx]
-            : (signalTypes.first ?? "line")
-
-        let normalized = signalType
+        let signalType =
+        signalTypes.indices.contains(idx)
+        ? signalTypes[idx]
+        : (signalTypes.first ?? "line")
+        
+        let normalized =
+        signalType
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
-
+        
         let bundleStyle: PortGroup.BundleStyle
         switch normalized {
         case "aes", "aes3":
@@ -143,7 +241,7 @@ func makeVisualPorts(labels: [String], signalTypes: [String]) -> [VisualPort] {
         default:
             bundleStyle = .single
         }
-
+        
         return VisualPort(
             label: label,
             signalType: signalType,
@@ -155,11 +253,11 @@ func makeVisualPorts(labels: [String], signalTypes: [String]) -> [VisualPort] {
 struct NodeView: View {
     @ObservedObject var instance: NodeInstance
     @EnvironmentObject var appState: AppState
-
+    
     private var comp: Component {
         Components.all[instance.type] ?? .placeholder
     }
-
+    
     var body: some View {
         if comp.isRack {
             RackNodeView(instance: instance, comp: comp)
@@ -179,24 +277,32 @@ struct StandardNodeView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-
+            
             VStack(alignment: .leading, spacing: 4) {
-                ZStack { // Equipment Header
+                ZStack {  // Equipment Header
                     HStack(spacing: 6) {
                         ComponentIcon(name: comp.iconName)
                             .frame(width: 18, height: 18)
-                            .foregroundColor(Color.categoryColor(comp.category).wcagContrastingTextColor)
-
+                            .foregroundColor(
+                                Color.categoryColor(comp.category)
+                                    .wcagContrastingTextColor
+                            )
+                        
                         Text(comp.name)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Color.categoryColor(comp.category).wcagContrastingTextColor)
+                            .foregroundColor(
+                                Color.categoryColor(comp.category)
+                                    .wcagContrastingTextColor
+                            )
                             .lineLimit(2)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-
+                        
                         Spacer(minLength: 0)
-
-                        Button { appState.deleteNode(id: instance.id) } label: {
+                        
+                        Button {
+                            appState.deleteNode(id: instance.id)
+                        } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
@@ -207,25 +313,25 @@ struct StandardNodeView: View {
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 6)
-                    .background { //Background color for Equipment Header
+                    .background {  //Background color for Equipment Header
                         RoundedRectangle(cornerRadius: 9)
                             .fill(Color.categoryColor(comp.category))
                     }
                     
                 }
-// FIXME: Remove comp.manufacturer
-                if comp.manufacturer != "Generic" { // Equipment Manufacturer
+                // FIXME: Remove comp.manufacturer
+                if comp.manufacturer != "Generic" {  // Equipment Manufacturer
                     Text(comp.manufacturer)
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
                 }
-
+                
                 Text(comp.desc)
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-
+                
                 if !comp.level.isEmpty {
                     Text(comp.level)
                         .font(.system(size: 9, weight: .medium))
@@ -235,7 +341,7 @@ struct StandardNodeView: View {
                         .background(Color.blue.opacity(0.08))
                         .clipShape(Capsule())
                 }
-
+                
                 if comp.comingSoon {
                     Text("Coming Soon")
                         .font(.system(size: 9, weight: .semibold))
@@ -249,7 +355,7 @@ struct StandardNodeView: View {
             .padding(.horizontal, 6)
             .padding(.top, 6)
             .padding(.bottom, 8)
-
+            
             Spacer(minLength: 0)
         }
         .frame(
@@ -262,12 +368,19 @@ struct StandardNodeView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 9)
-                .stroke(appState.connectingFromId == instance.id
-                        ? Color.blue.opacity(0.8)
-                        : Color.primary.opacity(0.08),
-                        lineWidth: appState.connectingFromId == instance.id ? 2 : 1)
+                .stroke(
+                    appState.connectingFromId == instance.id
+                    ? Color.blue.opacity(0.8)
+                    : Color.primary.opacity(0.08),
+                    lineWidth: appState.connectingFromId == instance.id ? 2 : 1
+                )
         )
-        .shadow(color: .black.opacity(isHovered ? 0.14 : 0.08), radius: isHovered ? 10 : 5, x: 0, y: isHovered ? 4 : 2)
+        .shadow(
+            color: .black.opacity(isHovered ? 0.14 : 0.08),
+            radius: isHovered ? 10 : 5,
+            x: 0,
+            y: isHovered ? 4 : 2
+        )
         .onHover { isHovered = $0 }
         .contentShape(Rectangle())
         .gesture(
@@ -285,7 +398,7 @@ struct StandardNodeView: View {
                     dragStartPos = nil
                 }
         )
-// MARK: - Per-port interactive dots on card edges
+        // MARK: - Per-port interactive dots on card edges
         .overlay {
             GeometryReader { geo in
                 let inputPorts = makeVisualPorts(
@@ -296,10 +409,12 @@ struct StandardNodeView: View {
                     labels: comp.ports.outputs,
                     signalTypes: comp.outputs
                 )
-
+                
                 let rowCount = max(inputPorts.count, outputPorts.count)
-
-                ForEach(Array(inputPorts.enumerated()), id: \.offset) { idx, port in
+                
+                ForEach(Array(inputPorts.enumerated()), id: \.offset) {
+                    idx,
+                    port in
                     PortEdgeDot(
                         instance: instance,
                         portIndex: idx,
@@ -314,8 +429,10 @@ struct StandardNodeView: View {
                         y: bodyPortY(idx: idx, rowCount: rowCount)
                     )
                 }
-
-                ForEach(Array(outputPorts.enumerated()), id: \.offset) { idx, port in
+                
+                ForEach(Array(outputPorts.enumerated()), id: \.offset) {
+                    idx,
+                    port in
                     PortEdgeDot(
                         instance: instance,
                         portIndex: idx,
@@ -332,12 +449,12 @@ struct StandardNodeView: View {
                 }
             }
         }
-        }
     }
+}
 
-    // MARK: - Port Edge Dot
-    /// An interactive circle on the left (input) or right (output) edge of a node card.
-    /// Color is based on signal type. Reports canvas-space center via PortAnchorPref.
+// MARK: - Port Edge Dot
+/// An interactive circle on the left (input) or right (output) edge of a node card.
+/// Color is based on signal type. Reports canvas-space center via PortAnchorPref.
 struct PortEdgeDot: View {
     @ObservedObject var instance: NodeInstance
     let portIndex: Int
@@ -347,11 +464,12 @@ struct PortEdgeDot: View {
     var signalType: String = "line"
     var bundleStyle: PortGroup.BundleStyle = .single
     @EnvironmentObject var appState: AppState
-        
+    
     private var color: Color { Color.signalTypeColor(signalType) }
-        
+    
     private var isSource: Bool {
-        appState.connectingFromId == instance.id && appState.connectingFromPortIndex == portIndex
+        appState.connectingFromId == instance.id
+        && appState.connectingFromPortIndex == portIndex
     }
     
     private var isConnecting: Bool { appState.connectingFromId != nil }
@@ -371,7 +489,10 @@ struct PortEdgeDot: View {
     var body: some View {
         ZStack {
             Color.clear
-                .frame(width: NodeView.portHitWidth, height: NodeView.portHitHeight)
+                .frame(
+                    width: NodeView.portHitWidth,
+                    height: NodeView.portHitHeight
+                )
             
             PortGlyph(
                 color: color,
@@ -394,7 +515,8 @@ struct PortEdgeDot: View {
                     .offset(
                         x: side == "in"
                         ? (NodeView.portHitWidth / 2 + NodeView.portLabelGap)
-                        : -(NodeView.portHitWidth / 2 + NodeView.portLabelGap)
+                        : -(NodeView.portHitWidth / 2
+                            + NodeView.portLabelGap)
                     )
             }
         }
@@ -403,33 +525,45 @@ struct PortEdgeDot: View {
             GeometryReader { geo in
                 Color.clear.preference(
                     key: PortAnchorPref.self,
-                    value: ["\(instance.id)-\(side)-\(portIndex)":
-                                geo.frame(in: .named("canvas")).center]
+                    value: [
+                        "\(instance.id)-\(side)-\(portIndex)":
+                            geo.frame(in: .named("canvas")).center
+                    ]
                 )
             }
         )
         .onTapGesture {
             if side == "out" {
                 if !isConnecting {
-                    appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
+                    appState.startConnecting(
+                        fromId: instance.id,
+                        fromPortIndex: portIndex
+                    )
                 } else if isSource {
                     appState.cancelConnecting()
                 }
             } else {
                 if isConnecting {
-                    appState.finishConnecting(toId: instance.id, toPortIndex: portIndex)
+                    appState.finishConnecting(
+                        toId: instance.id,
+                        toPortIndex: portIndex
+                    )
                 } else if isConnected {
-                    appState.disconnectInput(instanceId: instance.id, portIndex: portIndex)
+                    appState.disconnectInput(
+                        instanceId: instance.id,
+                        portIndex: portIndex
+                    )
                 }
             }
         }
         .help(
             side == "in"
-                ? (isConnected ? "Click to disconnect" : "Input — click to connect")
-                : "Output — click to start connection"
+            ? (isConnected
+               ? "Click to disconnect" : "Input — click to connect")
+            : "Output — click to start connection"
         )
     }
-
+    
     private var glyphWithAnchor: some View {
         PortGlyph(
             color: color,
@@ -446,7 +580,10 @@ struct PortEdgeDot: View {
                     key: PortAnchorPref.self,
                     value: [
                         "\(instance.id)-\(side)-\(portIndex)":
-                            CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+                            CGPoint(
+                                x: geo.size.width / 2,
+                                y: geo.size.height / 2
+                            )
                     ]
                 )
             }
@@ -458,22 +595,30 @@ struct PortGlyph: View {
     let color: Color
     let bundleStyle: PortGroup.BundleStyle
     let showDisconnectMark: Bool
-
+    
     var body: some View {
         switch bundleStyle {
         case .single:
             Circle()
                 .fill(color)
-                .frame(width: NodeView.portDotSize, height: NodeView.portDotSize)
+                .frame(
+                    width: NodeView.portDotSize,
+                    height: NodeView.portDotSize
+                )
                 .overlay(Circle().stroke(Color.white, lineWidth: 1.25))
                 .overlay {
                     if showDisconnectMark {
                         Image(systemName: "xmark")
-                            .font(.system(size: NodeView.portXMarkSize, weight: .black))
+                            .font(
+                                .system(
+                                    size: NodeView.portXMarkSize,
+                                    weight: .black
+                                )
+                            )
                             .foregroundColor(.white)
                     }
                 }
-
+            
         case .stereoPair:
             HStack(spacing: 2) {
                 Circle()
@@ -496,20 +641,34 @@ struct PortGlyph: View {
             .overlay {
                 if showDisconnectMark {
                     Image(systemName: "xmark")
-                        .font(.system(size: NodeView.portXMarkSize, weight: .black))
+                        .font(
+                            .system(
+                                size: NodeView.portXMarkSize,
+                                weight: .black
+                            )
+                        )
                         .foregroundColor(.white)
                 }
             }
-
+            
         case .multichannel:
             RoundedRectangle(cornerRadius: 3)
                 .fill(color)
                 .frame(width: 15, height: 8)
                 .overlay(
                     HStack(spacing: 2) {
-                        Circle().fill(.white.opacity(0.85)).frame(width: 2, height: 2)
-                        Circle().fill(.white.opacity(0.85)).frame(width: 2, height: 2)
-                        Circle().fill(.white.opacity(0.85)).frame(width: 2, height: 2)
+                        Circle().fill(.white.opacity(0.85)).frame(
+                            width: 2,
+                            height: 2
+                        )
+                        Circle().fill(.white.opacity(0.85)).frame(
+                            width: 2,
+                            height: 2
+                        )
+                        Circle().fill(.white.opacity(0.85)).frame(
+                            width: 2,
+                            height: 2
+                        )
                     }
                 )
                 .overlay(
@@ -519,11 +678,16 @@ struct PortGlyph: View {
                 .overlay {
                     if showDisconnectMark {
                         Image(systemName: "xmark")
-                            .font(.system(size: NodeView.portXMarkSize, weight: .black))
+                            .font(
+                                .system(
+                                    size: NodeView.portXMarkSize,
+                                    weight: .black
+                                )
+                            )
                             .foregroundColor(.white)
                     }
                 }
-
+            
         case .network:
             RoundedRectangle(cornerRadius: 3)
                 .fill(color)
@@ -540,144 +704,261 @@ struct PortGlyph: View {
                 .overlay {
                     if showDisconnectMark {
                         Image(systemName: "xmark")
-                            .font(.system(size: NodeView.portXMarkSize, weight: .black))
+                            .font(
+                                .system(
+                                    size: NodeView.portXMarkSize,
+                                    weight: .black
+                                )
+                            )
                             .foregroundColor(.white)
                     }
                 }
         }
     }
 }
-    // MARK: - Port List Section (all named physical ports — informational display)
-    struct PortListSection: View {
-        let inputs: [String]
-        let outputs: [String]
-        
-        var body: some View {
-            if inputs.isEmpty && outputs.isEmpty { EmptyView() }
-            else {
-                VStack(alignment: .leading, spacing: 2) {
-                    // Input ports
-                    if !inputs.isEmpty {
-                        Text("INPUTS")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundColor(.secondary)
-                            .padding(.top, 4)
-                        ForEach(inputs, id: \.self) { port in
-                            PortPill(name: port, isInput: true)
-                        }
+// MARK: - Port List Section
+struct PortListSection: View {
+    let inputs: [String]
+    let outputs: [String]
+    
+    var body: some View {
+        if inputs.isEmpty && outputs.isEmpty {
+            EmptyView()
+        } else {
+            VStack(alignment: .leading, spacing: 2) {
+                // Input ports
+                if !inputs.isEmpty {
+                    Text("INPUTS")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                    ForEach(inputs, id: \.self) { port in
+                        PortPill(name: port, isInput: true)
                     }
-                    // Output ports
-                    if !outputs.isEmpty {
-                        Text("OUTPUTS")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundColor(.secondary)
-                            .padding(.top, inputs.isEmpty ? 4 : 2)
-                        ForEach(outputs, id: \.self) { port in
-                            PortPill(name: port, isInput: false)
-                        }
+                }
+                // Output ports
+                if !outputs.isEmpty {
+                    Text("OUTPUTS")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .padding(.top, inputs.isEmpty ? 4 : 2)
+                    ForEach(outputs, id: \.self) { port in
+                        PortPill(name: port, isInput: false)
                     }
                 }
             }
         }
     }
+}
+// MARK: - Signal Type Descriptor Pill
+struct PortPill: View {
+    let name: String
+    let isInput: Bool
     
-    struct PortPill: View {
-        let name: String
-        let isInput: Bool
-        
-        var body: some View {
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(isInput ? Color(red: 0.37, green: 0.36, blue: 0.90) : Color.blue)
-                    .frame(width: 5, height: 5)
-                Text(name)
-                    .font(.system(size: 9))
-                    .foregroundColor(.primary.opacity(0.75))
-                    .lineLimit(1)
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(
+                    isInput
+                    ? Color(red: 0.37, green: 0.36, blue: 0.90) : Color.blue
+                )
+                .frame(width: 5, height: 5)
+            Text(name)
+                .font(.system(size: 9))
+                .foregroundColor(.primary.opacity(0.75))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 5)
+        .padding(.vertical, 2)
+        .background(
+            (isInput ? Color(red: 0.37, green: 0.36, blue: 0.90) : Color.blue)
+                .opacity(0.08)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 9))
+    }
+}
+
+// MARK: - Rack Ports
+struct RackFacePort: View {
+    @ObservedObject var instance: NodeInstance
+    let portIndex: Int
+    let side: String
+    var signalType: String = "line"
+    var bundleStyle: PortGroup.BundleStyle = .single
+    
+    @EnvironmentObject var appState: AppState
+    
+    private var color: Color { Color.signalTypeColor(signalType) }
+    
+    private var isSource: Bool {
+        appState.connectingFromId == instance.id
+        && appState.connectingFromPortIndex == portIndex
+    }
+    
+    private var isConnecting: Bool { appState.connectingFromId != nil }
+    
+    private var isConnected: Bool {
+        if side == "in" {
+            return appState.activeTab.connections.contains {
+                $0.toId == instance.id && $0.toPortIndex == portIndex
             }
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(
-                (isInput ? Color(red: 0.37, green: 0.36, blue: 0.90) : Color.blue).opacity(0.08)
+        } else {
+            return appState.activeTab.connections.contains {
+                $0.fromId == instance.id && $0.fromPortIndex == portIndex
+            }
+        }
+    }
+    
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color.black.opacity(0.10))
+                .frame(
+                    width: NodeView.rackPortHitWidth,
+                    height: NodeView.rackPortHitHeight
+                )
+            
+            PortGlyph(
+                color: color,
+                bundleStyle: bundleStyle,
+                showDisconnectMark: isConnected && side == "in" && !isConnecting
             )
-            .clipShape(RoundedRectangle(cornerRadius: 9))
+        }
+        .contentShape(Rectangle())
+        .shadow(
+            color: color.opacity(0.45),
+            radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
+        )
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: PortAnchorPref.self,
+                    value: [
+                        "\(instance.id)-\(side)-\(portIndex)":
+                            geo.frame(in: .named("canvas")).center
+                    ]
+                )
+            }
+        )
+        .onTapGesture {
+            if side == "out" {
+                if !isConnecting {
+                    appState.startConnecting(
+                        fromId: instance.id,
+                        fromPortIndex: portIndex
+                    )
+                } else if isSource {
+                    appState.cancelConnecting()
+                }
+            } else {
+                if isConnecting {
+                    appState.finishConnecting(
+                        toId: instance.id,
+                        toPortIndex: portIndex
+                    )
+                } else if isConnected {
+                    appState.disconnectInput(
+                        instanceId: instance.id,
+                        portIndex: portIndex
+                    )
+                }
+            }
         }
     }
+}
+
+// MARK: - Rack Node
+struct RackNodeView: View {
+    @ObservedObject var instance: NodeInstance
+    let comp: Component
+    @EnvironmentObject var appState: AppState
+    @State private var isHovered = false
+    @State private var dragStartPos: CGPoint?
     
-    // MARK: - Rack Node
-    struct RackNodeView: View {
-        @ObservedObject var instance: NodeInstance
-        let comp: Component
-        @EnvironmentObject var appState: AppState
-        @State private var isHovered = false
-        @State private var dragStartPos: CGPoint?
-        
-        var body: some View {
-            VStack(alignment: .leading, spacing: 0) {
-                Rectangle()
-                    .fill(Color.categoryColor(comp.category))
-                    .frame(height: 3)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Rectangle()
+                .fill(Color.categoryColor(comp.category))
+                .frame(height: 3)
+            
+            HStack {
+                ComponentIcon(name: comp.iconName)
+                    .frame(width: 16, height: 16)
                 
-                HStack {
-                    ComponentIcon(name: comp.iconName).frame(width: 16, height: 16)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(comp.name)
-                            .font(.system(size: 11, weight: .semibold))
-                        Text(comp.manufacturer)
-                            .font(.system(size: 9))
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    // Open inner rack canvas
-                    Button {
-                        appState.openRackTab(for: instance.id)
-                    } label: {
-                        HStack(spacing: 3) {
-                            Text("Open")
-                                .font(.system(size: 9, weight: .medium))
-                            Image(systemName: "arrow.forward.circle")
-                                .font(.system(size: 10))
-                        }
-                        .foregroundColor(.blue)
-                    }
-                    .buttonStyle(.plain)
-                    .opacity(isHovered ? 1 : 0)
-                    .padding(.trailing, 2)
-                    
-                    Button { appState.deleteNode(id: instance.id) } label: {
-                        Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .opacity(isHovered ? 1 : 0)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(comp.name)
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(comp.manufacturer)
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
                 }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
                 
-                // Rack unit slots
-                VStack(spacing: 0) {
-                    ForEach(0..<comp.rackUnits, id: \.self) { i in
-                        HStack {
-                            Text("\(comp.rackUnits - i)U")
-                                .font(.system(size: 8, weight: .medium, design: .monospaced))
-                                .foregroundColor(.secondary)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 9)
-                        .frame(height: 20)
-                        .background(i.isMultiple(of: 2)
-                                    ? Color.primary.opacity(0.03)
-                                    : Color.clear)
-                        if i < comp.rackUnits - 1 {
-                            Divider().opacity(0.3)
-                        }
+                Spacer()
+                
+                Button {
+                    appState.openRackTab(for: instance.id)
+                } label: {
+                    HStack(spacing: 3) {
+                        Text("Open")
+                            .font(.system(size: 9, weight: .medium))
+                        Image(systemName: "arrow.forward.circle")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                .opacity(isHovered ? 1 : 0)
+                .padding(.trailing, 2)
+                
+                Button {
+                    appState.deleteNode(id: instance.id)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .opacity(isHovered ? 1 : 0)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            
+            VStack(spacing: 0) {
+                ForEach(0..<comp.rackUnits, id: \.self) { i in
+                    HStack {
+                        Text("\(comp.rackUnits - i)U")
+                            .font(
+                                .system(
+                                    size: 8,
+                                    weight: .medium,
+                                    design: .monospaced
+                                )
+                            )
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 9)
+                    .frame(height: 20)
+                    .background(
+                        i.isMultiple(of: 2)
+                        ? Color.primary.opacity(0.03)
+                        : Color.clear
+                    )
+                    
+                    if i < comp.rackUnits - 1 {
+                        Divider().opacity(0.3)
                     }
                 }
             }
-            .frame(width: 200)
-            .background(Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 9))
-            .shadow(color: .black.opacity(0.08), radius: 5, x: 0, y: 2)
-            .overlay(RoundedRectangle(cornerRadius: 9).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+        }
+        .frame(width: NodeView.rackWidth)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .shadow(color: .black.opacity(0.08), radius: 5, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 9)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
         .onHover { isHovered = $0 }
         .contentShape(Rectangle())
         .gesture(
@@ -695,141 +976,147 @@ struct PortGlyph: View {
                     dragStartPos = nil
                 }
         )
-//MARK: - Per-port interactive dots on card edges
-           .overlay {
-                GeometryReader { geo in
-                    let inputPorts = makeVisualPorts(
-                        labels: comp.ports.inputs,
-                        signalTypes: comp.inputs
+        //MARK: - Rack Node Overlay
+        .overlay {
+            GeometryReader { geo in
+                let inputPorts = makeVisualPorts(
+                    labels: comp.ports.inputs,
+                    signalTypes: comp.inputs
+                )
+                let outputPorts = makeVisualPorts(
+                    labels: comp.ports.outputs,
+                    signalTypes: comp.outputs
+                )
+                
+                let inputY = rackInputRowY(rackUnits: comp.rackUnits)
+                let outputY = rackOutputRowY(rackUnits: comp.rackUnits)
+                
+                ForEach(Array(inputPorts.enumerated()), id: \.offset) { idx, port in
+                    RackFacePort(
+                        instance: instance,
+                        portIndex: idx,
+                        side: "in",
+                        signalType: port.signalType,
+                        bundleStyle: port.bundleStyle
                     )
-                    let outputPorts = makeVisualPorts(
-                        labels: comp.ports.outputs,
-                        signalTypes: comp.outputs
-                    )
-
-                    let rowCount = max(inputPorts.count, outputPorts.count)
-
-                    ForEach(Array(inputPorts.enumerated()), id: \.offset) { idx, port in
-                        PortEdgeDot(
-                            instance: instance,
-                            portIndex: idx,
-                            side: "in",
+                    .position(
+                        x: rackPortX(
+                            idx: idx,
                             total: inputPorts.count,
-                            label: port.label,
-                            signalType: port.signalType,
-                            bundleStyle: port.bundleStyle
-                        )
-                        .position(
-                            x: 0,
-                            y: bodyPortY(idx: idx, rowCount: rowCount)
-                        )
-                    }
-
-                    ForEach(Array(outputPorts.enumerated()), id: \.offset) { idx, port in
-                        PortEdgeDot(
-                            instance: instance,
-                            portIndex: idx,
-                            side: "out",
-                            total: outputPorts.count,
-                            label: port.label,
-                            signalType: port.signalType,
-                            bundleStyle: port.bundleStyle
-                        )
-                        .position(
-                            x: geo.size.width,
-                            y: bodyPortY(idx: idx, rowCount: rowCount)
-                        )
-                    }
+                            rackWidth: geo.size.width,
+                            side: "in"
+                        ),
+                        y: inputY
+                    )
                 }
-           }
+                
+                ForEach(Array(outputPorts.enumerated()), id: \.offset) { idx, port in
+                    RackFacePort(
+                        instance: instance,
+                        portIndex: idx,
+                        side: "out",
+                        signalType: port.signalType,
+                        bundleStyle: port.bundleStyle
+                    )
+                    .position(
+                        x: rackPortX(
+                            idx: idx,
+                            total: outputPorts.count,
+                            rackWidth: geo.size.width,
+                            side: "out"
+                        ),
+                        y: outputY
+                    )
+                }
+            }
         }
     }
+}
+// MARK: - SF Symbol icon wrapper
+struct ComponentIcon: View {
+    let name: String
+    
+    var body: some View {
+        Image(systemName: sfSymbol(for: name))
+            .resizable()
+            .scaledToFit()
+    }
+    
+    func sfSymbol(for iconName: String) -> String {
+        switch iconName {
+        case "mic", "mic_cond": return "mic"
+        case "guitar": return "guitars"
+        case "keyboard": return "pianokeys"
+        case "di": return "arrow.left.arrow.right.square"
+        case "preamp": return "amplifier"
+        case "equalizer": return "slider.vertical.3"
+        case "compressor": return "waveform.path.ecg"
+        case "gate": return "waveform.path"
+        case "effects": return "waveform"
+        case "pedal": return "circle.grid.2x1"
+        case "console": return "slider.horizontal.3"
+        case "patchbay": return "cable.connector.horizontal"
+        case "interface": return "cpu"
+        case "power_amp": return "triangle"
+        case "speaker": return "speaker.wave.3"
+        case "monitor": return "desktopcomputer"
+        case "headphones": return "headphones"
+        case "headphone_amp": return "headphones.circle"
+        case "wireless_rx": return "antenna.radiowaves.left.and.right"
+        case "wireless_tx": return "dot.radiowaves.right"
+        case "handheld": return "mic.fill"
+        case "iem_tx": return "dot.radiowaves.left.and.right"
+        case "iem_rx": return "earbuds"
+        case "antenna": return "antenna.radiowaves.left.and.right"
+        case "distro": return "arrow.triangle.branch"
+        case "combiner": return "arrow.triangle.merge"
+        case "network": return "network"
+        case "stagebox": return "square.grid.3x3"
+        case "power": return "bolt"
+        case "rack": return "server.rack"
+        default: return "questionmark.square"
+        }
+    }
+}
+// MARK: - Previews
 
-    // MARK: - SF Symbol icon wrapper
-    struct ComponentIcon: View {
-        let name: String
-        
-        var body: some View {
-            Image(systemName: sfSymbol(for: name))
-                .resizable()
-                .scaledToFit()
-        }
-        
-        func sfSymbol(for iconName: String) -> String {
-            switch iconName {
-            case "mic", "mic_cond":   return "mic"
-            case "guitar":            return "guitars"
-            case "keyboard":          return "pianokeys"
-            case "di":                return "arrow.left.arrow.right.square"
-            case "preamp":            return "amplifier"
-            case "equalizer":         return "slider.vertical.3"
-            case "compressor":        return "waveform.path.ecg"
-            case "gate":              return "waveform.path"
-            case "effects":           return "waveform"
-            case "pedal":             return "circle.grid.2x1"
-            case "console":           return "slider.horizontal.3"
-            case "patchbay":          return "cable.connector.horizontal"
-            case "interface":         return "cpu"
-            case "power_amp":         return "triangle"
-            case "speaker":           return "speaker.wave.3"
-            case "monitor":           return "desktopcomputer"
-            case "headphones":        return "headphones"
-            case "headphone_amp":     return "headphones.circle"
-            case "wireless_rx":       return "antenna.radiowaves.left.and.right"
-            case "wireless_tx":       return "dot.radiowaves.right"
-            case "handheld":          return "mic.fill"
-            case "iem_tx":            return "dot.radiowaves.left.and.right"
-            case "iem_rx":            return "earbuds"
-            case "antenna":           return "antenna.radiowaves.left.and.right"
-            case "distro":            return "arrow.triangle.branch"
-            case "combiner":          return "arrow.triangle.merge"
-            case "network":           return "network"
-            case "stagebox":          return "square.grid.3x3"
-            case "power":             return "bolt"
-            case "rack":              return "server.rack"
-            default:                  return "questionmark.square"
-            }
-        }
-    }
-    // MARK: - Previews
-    
-    private extension AppState {
-        static var nodePreviewState: AppState {
-            AppState()
-        }
-        
-        static var standardNodePreviewState: AppState {
-            let state = AppState()
-            if let type = Components.all.first(where: { !$0.value.isRack })?.key {
-                state.addInstance(type: type, position: CGPoint(x: 120, y: 120))
-            }
-            return state
-        }
-        
-        static var rackNodePreviewState: AppState {
-            let state = AppState()
-            if let type = Components.all.first(where: { $0.value.isRack })?.key {
-                state.addInstance(type: type, position: CGPoint(x: 120, y: 120))
-            }
-            return state
-        }
+extension AppState {
+    fileprivate static var nodePreviewState: AppState {
+        AppState()
     }
     
-    #Preview("NodeView - Standard") {
-        Group {
-            if let instance = AppState.standardNodePreviewState.instances.first {
-                NodeView(instance: instance)
-                    .environmentObject(AppState.standardNodePreviewState)
-                    .padding()
-                    .fixedSize()
-                    .coordinateSpace(name: "canvas")
-            } else {
-                Text("No standard component available for preview")
-                    .padding()
-            }
+    fileprivate static var standardNodePreviewState: AppState {
+        let state = AppState()
+        if let type = Components.all.first(where: { !$0.value.isRack })?.key {
+            state.addInstance(type: type, position: CGPoint(x: 120, y: 120))
         }
+        return state
     }
     
+    fileprivate static var rackNodePreviewState: AppState {
+        let state = AppState()
+        if let type = Components.all.first(where: { $0.value.isRack })?.key {
+            state.addInstance(type: type, position: CGPoint(x: 120, y: 120))
+        }
+        return state
+    }
+}
+
+#Preview("NodeView - Standard") {
+    Group {
+        if let instance = AppState.standardNodePreviewState.instances.first {
+            NodeView(instance: instance)
+                .environmentObject(AppState.standardNodePreviewState)
+                .padding()
+                .fixedSize()
+                .coordinateSpace(name: "canvas")
+        } else {
+            Text("No standard component available for preview")
+                .padding()
+        }
+    }
+}
+
 #Preview("NodeView - Rack") {
     Group {
         if let instance = AppState.rackNodePreviewState.instances.first {
@@ -844,7 +1131,7 @@ struct PortGlyph: View {
         }
     }
 }
-    
+
 #Preview("StandardNodeView") {
     Group {
         let state = AppState.standardNodePreviewState
@@ -861,7 +1148,7 @@ struct PortGlyph: View {
         }
     }
 }
-    
+
 #Preview("RackNodeView") {
     Group {
         let state = AppState.rackNodePreviewState
@@ -878,36 +1165,35 @@ struct PortGlyph: View {
         }
     }
 }
-    
-    #Preview("Port List Section") {
-        PortListSection(
-            inputs: ["Mic In", "Line In L", "Line In R"],
-            outputs: ["Main Out L", "Main Out R", "Phones"]
-        )
-        .padding()
-        .frame(width: 220, height: 160)
-    }
-    
-    #Preview("Port Pill - Input") {
-        PortPill(name: "Mic Input", isInput: true)
-            .padding()
-            .frame(width: 160, height: 60)
-    }
-    
-    #Preview("Port Pill - Output") {
-        PortPill(name: "Main Output", isInput: false)
-            .padding()
-            .frame(width: 160, height: 60)
-    }
-    
-    #Preview("Component Icon") {
-        VStack(spacing: 16) {
-            ComponentIcon(name: "mic").frame(width: 24, height: 24)
-            ComponentIcon(name: "console").frame(width: 24, height: 24)
-            ComponentIcon(name: "speaker").frame(width: 24, height: 24)
-            ComponentIcon(name: "rack").frame(width: 24, height: 24)
-        }
-        .padding()
-        .frame(width: 120, height: 180)
-    }
 
+#Preview("Port List Section") {
+    PortListSection(
+        inputs: ["Mic In", "Line In L", "Line In R"],
+        outputs: ["Main Out L", "Main Out R", "Phones"]
+    )
+    .padding()
+    .frame(width: 220, height: 160)
+}
+
+#Preview("Port Pill - Input") {
+    PortPill(name: "Mic Input", isInput: true)
+        .padding()
+        .frame(width: 160, height: 60)
+}
+
+#Preview("Port Pill - Output") {
+    PortPill(name: "Main Output", isInput: false)
+        .padding()
+        .frame(width: 160, height: 60)
+}
+
+#Preview("Component Icon") {
+    VStack(spacing: 16) {
+        ComponentIcon(name: "mic").frame(width: 24, height: 24)
+        ComponentIcon(name: "console").frame(width: 24, height: 24)
+        ComponentIcon(name: "speaker").frame(width: 24, height: 24)
+        ComponentIcon(name: "rack").frame(width: 24, height: 24)
+    }
+    .padding()
+    .frame(width: 120, height: 180)
+}
