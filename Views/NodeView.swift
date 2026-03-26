@@ -99,79 +99,6 @@ func standardNodeWidth(for comp: Component) -> CGFloat {
     return max(baseWidth, totalLabelWidth)
 }
 
-/// Returns the y-position for a rack port based on its index and the rack height.
-/// - Parameters:
-///   - idx: The port index on that side.
-///   - total: The total number of ports on that side.
-///   - rackUnits: The height of the device in rack units.
-/// - Returns: The vertical center position for that port in the rack view.
-func rackPortY(idx: Int, total: Int, rackUnits: Int) -> CGFloat {
-    let faceTop = 3 + NodeView.rackHeaderHeight + NodeView.rackFaceTopInset
-    
-    let faceHeight =
-    CGFloat(rackUnits) * NodeView.rackUnitHeight
-    + CGFloat(max(0, rackUnits - 1)) * NodeView.rackDividerHeight
-    - NodeView.rackFaceTopInset
-    - NodeView.rackFaceBottomInset
-    
-    guard total > 0 else { return faceTop + faceHeight / 2 }
-    if total == 1 { return faceTop + faceHeight / 2 }
-    
-    let maxSpread = faceHeight / CGFloat(total - 1)
-    let step = min(NodeView.rackPortSpacing, maxSpread)
-    let usedHeight = step * CGFloat(total - 1)
-    let startY = faceTop + (faceHeight - usedHeight) / 2
-    
-    return startY + CGFloat(idx) * step
-}
-
-/// - Parameters:
-///   - idx: The port index on that side.
-///   - total: The total number of ports on that side.
-///   - rackWidth: The total width of the rack node.
-///   - side: The side of the rack, either "in" or "out".
-/// - Returns: The horizontal center position for that port in the rack view.
-func rackPortX(idx: Int, total: Int, rackWidth: CGFloat, side: String) -> CGFloat {
-    let outerInset: CGFloat = 20
-    let centerGap: CGFloat = 20
-
-    let halfWidth = rackWidth / 2
-    let leftMin = outerInset
-    let leftMax = halfWidth - centerGap / 2
-    let rightMin = halfWidth + centerGap / 2
-    let rightMax = rackWidth - outerInset
-
-    let minX = side == "in" ? leftMin : rightMin
-    let maxX = side == "in" ? leftMax : rightMax
-    let usableWidth = maxX - minX
-
-    guard total > 0 else { return rackWidth / 2 }
-    if total == 1 { return minX + usableWidth / 2 }
-
-    let step = usableWidth / CGFloat(total - 1)
-    return minX + CGFloat(idx) * step
-}
-
-/// Returns the y-position for the input row on the rack face.
-/// - Parameter rackUnits: The height of the device in rack units.
-/// - Returns: The vertical center position for the input row.
-func rackInputRowY(rackUnits: Int) -> CGFloat {
-    let faceTop = 3 + NodeView.rackHeaderHeight
-    return faceTop + NodeView.rackPortRowTopOffset
-}
-
-/// Returns the y-position for the output row on the rack face.
-/// - Parameter rackUnits: The height of the device in rack units.
-/// - Returns: The vertical center position for the output row.
-func rackOutputRowY(rackUnits: Int) -> CGFloat {
-    let faceTop = 3 + NodeView.rackHeaderHeight
-    let faceHeight =
-        CGFloat(rackUnits) * NodeView.rackUnitHeight
-        + CGFloat(max(0, rackUnits - 1)) * NodeView.rackDividerHeight
-
-    return faceTop + faceHeight - NodeView.rackPortRowBottomOffset
-}
-
 // TODO: Add Ruleset for Intercom devices
 
 // MARK: - Constants
@@ -195,18 +122,6 @@ extension NodeView {
     static let rackHeaderHeight: CGFloat = 28
     static let rackUnitHeight: CGFloat = 20
     static let rackDividerHeight: CGFloat = 1
-    
-    static let rackFaceTopInset: CGFloat = 8
-    static let rackFaceBottomInset: CGFloat = 8
-    
-    static let rackPortSpacing: CGFloat = 18
-    static let rackPortHitWidth: CGFloat = 28
-    static let rackPortHitHeight: CGFloat = 16
-    static let rackPortRowTopOffset: CGFloat = 18
-    static let rackPortRowBottomOffset: CGFloat = 18
-    
-    static let rackInputColumnX: CGFloat = 52
-    static let rackOutputColumnX: CGFloat = 148
     
 }
 
@@ -778,95 +693,6 @@ struct PortPill: View {
     }
 }
 
-// MARK: - Rack Ports
-struct RackFacePort: View {
-    @ObservedObject var instance: NodeInstance
-    let portIndex: Int
-    let side: String
-    var signalType: String = "line"
-    var bundleStyle: PortGroup.BundleStyle = .single
-    
-    @EnvironmentObject var appState: AppState
-    
-    private var color: Color { Color.signalTypeColor(signalType) }
-    
-    private var isSource: Bool {
-        appState.connectingFromId == instance.id
-        && appState.connectingFromPortIndex == portIndex
-    }
-    
-    private var isConnecting: Bool { appState.connectingFromId != nil }
-    
-    private var isConnected: Bool {
-        if side == "in" {
-            return appState.activeTab.connections.contains {
-                $0.toId == instance.id && $0.toPortIndex == portIndex
-            }
-        } else {
-            return appState.activeTab.connections.contains {
-                $0.fromId == instance.id && $0.fromPortIndex == portIndex
-            }
-        }
-    }
-    
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color.black.opacity(0.10))
-                .frame(
-                    width: NodeView.rackPortHitWidth,
-                    height: NodeView.rackPortHitHeight
-                )
-            
-            PortGlyph(
-                color: color,
-                bundleStyle: bundleStyle,
-                showDisconnectMark: isConnected && side == "in" && !isConnecting
-            )
-        }
-        .contentShape(Rectangle())
-        .shadow(
-            color: color.opacity(0.45),
-            radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
-        )
-        .background(
-            GeometryReader { geo in
-                Color.clear.preference(
-                    key: PortAnchorPref.self,
-                    value: [
-                        "\(instance.id)-\(side)-\(portIndex)":
-                            geo.frame(in: .named("canvas")).center
-                    ]
-                )
-            }
-        )
-        .onTapGesture {
-            if side == "out" {
-                if !isConnecting {
-                    appState.startConnecting(
-                        fromId: instance.id,
-                        fromPortIndex: portIndex
-                    )
-                } else if isSource {
-                    appState.cancelConnecting()
-                }
-            } else {
-                if isConnecting {
-                    appState.finishConnecting(
-                        toId: instance.id,
-                        toPortIndex: portIndex
-                    )
-                } else if isConnected {
-                    appState.disconnectInput(
-                        instanceId: instance.id,
-                        portIndex: portIndex
-                    )
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Rack Node
 struct RackNodeView: View {
     @ObservedObject var instance: NodeInstance
@@ -874,6 +700,25 @@ struct RackNodeView: View {
     @EnvironmentObject var appState: AppState
     @State private var isHovered = false
     @State private var dragStartPos: CGPoint?
+    
+    private var rackTab: CanvasTab? {
+        appState.tabs.first(where: { $0.parentRackInstanceId == instance.id })
+    }
+    
+    private var rackItems: [NodeInstance] {
+        rackTab?.instances ?? []
+    }
+    
+    private var usedRackUnits: Int {
+        rackItems.reduce(0) { sum, item in
+            let units = Components.all[item.type]?.rackUnits ?? 1
+            return sum + max(units, 1)
+        }
+    }
+    
+    private var totalRackUnits: Int {
+        max(comp.rackUnits * 2, 1)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -950,6 +795,39 @@ struct RackNodeView: View {
                     }
                 }
             }
+            
+            if !rackItems.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text("\(rackItems.count) item\(rackItems.count == 1 ? "" : "s")")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        Text("\(usedRackUnits)U / \(totalRackUnits)U")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    GeometryReader { geo in
+                        let fill = min(CGFloat(usedRackUnits) / CGFloat(totalRackUnits), 1)
+                        
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.primary.opacity(0.08))
+                            
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.categoryColor(comp.category).opacity(0.55))
+                                .frame(width: geo.size.width * fill)
+                        }
+                    }
+                    .frame(height: 6)
+                }
+                .padding(.horizontal, 9)
+                .padding(.top, 6)
+                .padding(.bottom, 8)
+            }
         }
         .frame(width: NodeView.rackWidth)
         .background(Color(nsColor: .controlBackgroundColor))
@@ -976,60 +854,6 @@ struct RackNodeView: View {
                     dragStartPos = nil
                 }
         )
-        //MARK: - Rack Node Overlay
-        .overlay {
-            GeometryReader { geo in
-                let inputPorts = makeVisualPorts(
-                    labels: comp.ports.inputs,
-                    signalTypes: comp.inputs
-                )
-                let outputPorts = makeVisualPorts(
-                    labels: comp.ports.outputs,
-                    signalTypes: comp.outputs
-                )
-                
-                let inputY = rackInputRowY(rackUnits: comp.rackUnits)
-                let outputY = rackOutputRowY(rackUnits: comp.rackUnits)
-                
-                ForEach(Array(inputPorts.enumerated()), id: \.offset) { idx, port in
-                    RackFacePort(
-                        instance: instance,
-                        portIndex: idx,
-                        side: "in",
-                        signalType: port.signalType,
-                        bundleStyle: port.bundleStyle
-                    )
-                    .position(
-                        x: rackPortX(
-                            idx: idx,
-                            total: inputPorts.count,
-                            rackWidth: geo.size.width,
-                            side: "in"
-                        ),
-                        y: inputY
-                    )
-                }
-                
-                ForEach(Array(outputPorts.enumerated()), id: \.offset) { idx, port in
-                    RackFacePort(
-                        instance: instance,
-                        portIndex: idx,
-                        side: "out",
-                        signalType: port.signalType,
-                        bundleStyle: port.bundleStyle
-                    )
-                    .position(
-                        x: rackPortX(
-                            idx: idx,
-                            total: outputPorts.count,
-                            rackWidth: geo.size.width,
-                            side: "out"
-                        ),
-                        y: outputY
-                    )
-                }
-            }
-        }
     }
 }
 // MARK: - SF Symbol icon wrapper
