@@ -368,28 +368,32 @@ struct StandardNodeView: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 
-                if !comp.level.isEmpty {
-                    Text(comp.level)
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.08))
-                        .clipShape(Capsule())
-                }
-                
-                if comp.comingSoon {
-                    Text("Coming Soon")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(.orange)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.12))
-                        .clipShape(Capsule())
-                }
+                HStack(spacing: 4) {
+                    if !comp.level.isEmpty {
+                        Text(comp.level)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.08))
+                            .clipShape(Capsule())
+                    }
 
-                if comp.hasNetworkIP {
-                    IPAddressBadge(instance: instance)
+                    if comp.comingSoon {
+                        Text("Coming Soon")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+
+                    Spacer(minLength: 0)
+
+                    if comp.hasNetworkIP {
+                        IPAddressBadge(instance: instance)
+                    }
                 }
             }
             .padding(.horizontal, 6)
