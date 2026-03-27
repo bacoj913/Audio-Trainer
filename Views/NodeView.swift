@@ -16,6 +16,15 @@ struct PortAnchorPref: PreferenceKey {
     }
 }
 
+// MARK: - Rack Display Port
+struct RackDisplayPort: Identifiable {
+    let id = UUID()
+    let side: String
+    let signalType: String
+    let bundleStyle: PortGroup.BundleStyle
+    let portIndexes: [Int]
+}
+
 // MARK: - Helpers
 extension CGRect {
     var center: CGPoint { CGPoint(x: midX, y: midY) }
@@ -98,7 +107,90 @@ func standardNodeWidth(for comp: Component) -> CGFloat {
     
     return max(baseWidth, totalLabelWidth)
 }
+func makeRackDisplayPorts(
+    labels: [String],
+    signalTypes: [String],
+    side: String
+) -> [RackDisplayPort] {
+    let visualPorts = makeVisualPorts(labels: labels, signalTypes: signalTypes)
 
+    var groupedIndexes: [String: [Int]] = [:]
+    var groupedSignalType: [String: String] = [:]
+    var groupedBundleStyle: [String: PortGroup.BundleStyle] = [:]
+    var orderedKeys: [String] = []
+
+    for (idx, port) in visualPorts.enumerated() {
+        let key = port.signalType
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        if groupedIndexes[key] == nil {
+            groupedIndexes[key] = []
+            groupedSignalType[key] = port.signalType
+            groupedBundleStyle[key] = port.bundleStyle
+            orderedKeys.append(key)
+        }
+
+        groupedIndexes[key, default: []].append(idx)
+    }
+
+    return orderedKeys.map { key in
+        RackDisplayPort(
+            side: side,
+            signalType: groupedSignalType[key] ?? key,
+            bundleStyle: groupedBundleStyle[key] ?? .single,
+            portIndexes: groupedIndexes[key] ?? []
+        )
+    }
+}
+
+func rackAvailablePortIndexes(
+    instanceId: UUID,
+    side: String,
+    candidates: [Int],
+    appState: AppState
+) -> [Int] {
+    let allConns = appState.activeTab.connections + appState.crossTabConnections
+
+    return candidates.filter { idx in
+        if side == "in" {
+            return !allConns.contains {
+                $0.toId == instanceId && $0.toPortIndex == idx
+            }
+        } else {
+            return !allConns.contains {
+                $0.fromId == instanceId && $0.fromPortIndex == idx
+            }
+        }
+    }
+}
+
+func rackUsedPortIndexes(
+    instanceId: UUID,
+    side: String,
+    candidates: [Int],
+    appState: AppState
+) -> [Int] {
+    let allConns = appState.activeTab.connections + appState.crossTabConnections
+
+    return candidates.filter { idx in
+        if side == "in" {
+            return allConns.contains {
+                $0.toId == instanceId && $0.toPortIndex == idx
+            }
+        } else {
+            return allConns.contains {
+                $0.fromId == instanceId && $0.fromPortIndex == idx
+            }
+        }
+    }
+}
+
+func shouldAlwaysShowRackGroups(for comp: Component) -> Bool {
+    comp.id == "configurable_io_2u"
+        || comp.category == "Patching"
+        || comp.category == "Stage Boxes"
+}
 // TODO: Add Ruleset for Intercom devices
 
 // MARK: - Constants
@@ -507,6 +599,214 @@ struct PortEdgeDot: View {
         )
     }
 }
+
+// MARK: - Rack Grouped Port Dot
+struct RackGroupedPortDot: View {
+    @ObservedObject var instance: NodeInstance
+    let displayPort: RackDisplayPort
+
+    @EnvironmentObject var appState: AppState
+    @State private var showingPicker = false
+
+    private var color: Color {
+        Color.signalTypeColor(displayPort.signalType)
+    }
+
+    private var availableIndexes: [Int] {
+        rackAvailablePortIndexes(
+            instanceId: instance.id,
+            side: displayPort.side,
+            candidates: displayPort.portIndexes,
+            appState: appState
+        )
+    }
+
+    private var usedIndexes: [Int] {
+        rackUsedPortIndexes(
+            instanceId: instance.id,
+            side: displayPort.side,
+            candidates: displayPort.portIndexes,
+            appState: appState
+        )
+    }
+
+    private var isConnecting: Bool {
+        appState.connectingFromId != nil
+    }
+
+    private var canReceiveConnection: Bool {
+        displayPort.side == "in" && isConnecting && !availableIndexes.isEmpty
+    }
+
+    private var canStartConnection: Bool {
+        displayPort.side == "out" && !availableIndexes.isEmpty
+    }
+
+    private var occupancyText: String {
+        "\(usedIndexes.count)/\(displayPort.portIndexes.count)"
+    }
+
+    var body: some View {
+        ZStack {
+            Color.clear
+                .frame(
+                    width: NodeView.portHitWidth + 8,
+                    height: NodeView.portHitHeight + 8
+                )
+
+            VStack(spacing: 3) {
+                ZStack(alignment: .bottomTrailing) {
+                    PortGlyph(
+                        color: color,
+                        bundleStyle: displayPort.bundleStyle,
+                        showDisconnectMark: false
+                    )
+                    .shadow(
+                        color: color.opacity(
+                            canReceiveConnection || canStartConnection ? 0.45 : 0.18
+                        ),
+                        radius: canReceiveConnection || canStartConnection ? 6 : 0
+                    )
+
+                    Text(occupancyText)
+                        .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.primary.opacity(0.72))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.95))
+                        .clipShape(Capsule())
+                        .offset(x: 12, y: 8)
+                        .allowsHitTesting(false)
+                }
+            }
+            .opacity(availableIndexes.isEmpty ? 0.35 : 1)
+        }
+        .contentShape(Rectangle())
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: PortAnchorPref.self,
+                    value: [
+                        "\(instance.id)-\(displayPort.side)-group-\(displayPort.signalType)": geo.frame(in: .named("canvas")).center
+                    ]
+                )
+            }
+        )
+        .onTapGesture {
+            handleTap()
+        }
+        .popover(isPresented: $showingPicker, arrowEdge: displayPort.side == "in" ? .leading : .trailing) {
+            RackGroupedPortPicker(
+                instance: instance,
+                displayPort: displayPort,
+                availableIndexes: availableIndexes
+            )
+            .environmentObject(appState)
+        }
+    }
+
+    private func handleTap() {
+        guard !availableIndexes.isEmpty else { return }
+
+        if displayPort.side == "out" {
+            if availableIndexes.count == 1 {
+                appState.startConnecting(
+                    fromId: instance.id,
+                    fromPortIndex: availableIndexes[0]
+                )
+            } else {
+                showingPicker = true
+            }
+        } else {
+            guard isConnecting else { return }
+
+            if availableIndexes.count == 1 {
+                appState.finishConnecting(
+                    toId: instance.id,
+                    toPortIndex: availableIndexes[0]
+                )
+            } else {
+                showingPicker = true
+            }
+        }
+    }
+}
+
+// MARK: - Rack Grouped Part Picker
+struct RackGroupedPortPicker: View {
+    @ObservedObject var instance: NodeInstance
+    let displayPort: RackDisplayPort
+    let availableIndexes: [Int]
+
+    @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) private var dismiss
+
+    private var effectivePorts: PortInfo {
+        instance.effectivePorts ?? (Components.all[instance.type]?.ports ?? PortInfo(inputs: [], outputs: []))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("\(displayPort.signalType.uppercased()) \(displayPort.side == "in" ? "Inputs" : "Outputs")")
+                .font(.system(size: 12, weight: .semibold))
+
+            ForEach(availableIndexes, id: \.self) { portIndex in
+                Button {
+                    select(portIndex)
+                } label: {
+                    HStack(spacing: 8) {
+                        PortGlyph(
+                            color: Color.signalTypeColor(displayPort.signalType),
+                            bundleStyle: displayPort.bundleStyle,
+                            showDisconnectMark: false
+                        )
+
+                        Text(labelForPort(portIndex))
+                            .font(.system(size: 12))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .frame(minWidth: 180, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .padding(12)
+    }
+
+    private func labelForPort(_ portIndex: Int) -> String {
+        let labels = displayPort.side == "in" ? effectivePorts.inputs : effectivePorts.outputs
+
+        if labels.indices.contains(portIndex), !labels[portIndex].isEmpty {
+            return labels[portIndex]
+        }
+
+        let dir = displayPort.side == "in" ? "In" : "Out"
+        return "\(displayPort.signalType.uppercased()) \(dir) \(portIndex + 1)"
+    }
+
+    private func select(_ portIndex: Int) {
+        if displayPort.side == "out" {
+            appState.startConnecting(
+                fromId: instance.id,
+                fromPortIndex: portIndex
+            )
+        } else {
+            appState.finishConnecting(
+                toId: instance.id,
+                toPortIndex: portIndex
+            )
+        }
+
+        dismiss()
+    }
+}
+
 // MARK: - Multichannel Port Glyph
 struct PortGlyph: View {
     let color: Color
@@ -712,23 +1012,23 @@ struct RackNodeView: View {
     @State private var headerHeight: CGFloat = 31
     @State private var showingSaveSheet = false
     @State private var saveRackName = ""
-
+    
     private static let topBarH: CGFloat = 3
     private static let unitH: CGFloat = 20   // NodeView.rackUnitHeight
-
+    
     // MARK: - Rack tab / slot items
-
+    
     private var rackTab: CanvasTab? {
         appState.tabs.first { $0.parentRackInstanceId == instance.id }
     }
-
+    
     private struct SlotItem {
         let topRow: Int
         let rowSpan: Int
         let inst: NodeInstance
         let comp: Component
     }
-
+    
     private var slotItems: [SlotItem] {
         guard let tab = rackTab else { return [] }
         return tab.instances.compactMap { inst -> SlotItem? in
@@ -737,13 +1037,13 @@ struct RackNodeView: View {
             return SlotItem(topRow: topRow, rowSpan: max(1, c.rackUnits), inst: inst, comp: c)
         }.sorted { $0.topRow < $1.topRow }
     }
-
+    
     private var occupiedByItem: [Int: SlotItem] {
         var dict: [Int: SlotItem] = [:]
         for item in slotItems { dict[item.topRow] = item }
         return dict
     }
-
+    
     private var continuationRows: Set<Int> {
         var rows = Set<Int>()
         for item in slotItems {
@@ -753,25 +1053,25 @@ struct RackNodeView: View {
         }
         return rows
     }
-
+    
     // MARK: - Body
-
+    
     var body: some View {
         let items = slotItems
         let occupied = occupiedByItem
         let continued = continuationRows
-
+        
         VStack(alignment: .leading, spacing: 0) {
             // Top color bar
             Rectangle()
                 .fill(Color.categoryColor(comp.category))
                 .frame(height: Self.topBarH)
-
+            
             // Header — measure combined height for port positioning
             HStack {
                 ComponentIcon(name: comp.iconName)
                     .frame(width: 16, height: 16)
-
+                
                 VStack(alignment: .leading, spacing: 1) {
                     Text(comp.name)
                         .font(.system(size: 11, weight: .semibold))
@@ -779,9 +1079,9 @@ struct RackNodeView: View {
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
                 }
-
+                
                 Spacer()
-
+                
                 Button {
                     appState.openRackTab(for: instance.id)
                 } label: {
@@ -796,7 +1096,7 @@ struct RackNodeView: View {
                 .buttonStyle(.plain)
                 .opacity(isHovered ? 1 : 0)
                 .padding(.trailing, 2)
-
+                
                 Button {
                     saveRackName = comp.name
                     showingSaveSheet = true
@@ -809,7 +1109,7 @@ struct RackNodeView: View {
                 .opacity(isHovered ? 1 : 0)
                 .padding(.trailing, 2)
                 .help("Save to My Equipment")
-
+                
                 Button {
                     appState.deleteNode(id: instance.id)
                 } label: {
@@ -828,7 +1128,7 @@ struct RackNodeView: View {
                     value: Self.topBarH + geo.size.height
                 )
             })
-
+            
             // Rack body: slot rows
             VStack(spacing: 0) {
                 ForEach(0..<comp.rackUnits, id: \.self) { i in
@@ -886,57 +1186,75 @@ struct RackNodeView: View {
                     let itemTopY = headerHeight + CGFloat(item.topRow) * Self.unitH
                     let itemH = CGFloat(item.rowSpan) * Self.unitH
                     let effectivePorts = item.inst.effectivePorts ?? item.comp.ports
-                    let inputPorts = makeVisualPorts(
+                    
+                    let inputDisplayPorts = makeRackDisplayPorts(
                         labels: effectivePorts.inputs,
-                        signalTypes: item.inst.effectiveInputTypes ?? item.comp.inputs
+                        signalTypes: item.inst.effectiveInputTypes ?? item.comp.inputs,
+                        side: "in"
                     )
-                    let outputPorts = makeVisualPorts(
+                    
+                    let outputDisplayPorts = makeRackDisplayPorts(
                         labels: effectivePorts.outputs,
-                        signalTypes: item.inst.effectiveOutputTypes ?? item.comp.outputs
+                        signalTypes: item.inst.effectiveOutputTypes ?? item.comp.outputs,
+                        side: "out"
                     )
-                    // Limit displayed ports so they don't crowd in small slots
-                    let maxPorts = max(1, Int(itemH / 14))
-                    let visInputs = Array(inputPorts.prefix(maxPorts))
-                    let visOutputs = Array(outputPorts.prefix(maxPorts))
-
-                    ForEach(Array(visInputs.enumerated()), id: \.offset) { idx, port in
-                        PortEdgeDot(
-                            instance: item.inst,
-                            portIndex: idx,
+                    
+                    let alwaysShowGroups = shouldAlwaysShowRackGroups(for: item.comp)
+                    
+                    let visibleInputs = inputDisplayPorts.filter {
+                        alwaysShowGroups || !rackAvailablePortIndexes(
+                            instanceId: item.inst.id,
                             side: "in",
-                            total: visInputs.count,
-                            label: "",
-                            signalType: port.signalType,
-                            bundleStyle: port.bundleStyle
+                            candidates: $0.portIndexes,
+                            appState: appState
+                        ).isEmpty
+                    }
+                    
+                    let visibleOutputs = outputDisplayPorts.filter {
+                        alwaysShowGroups || !rackAvailablePortIndexes(
+                            instanceId: item.inst.id,
+                            side: "out",
+                            candidates: $0.portIndexes,
+                            appState: appState
+                        ).isEmpty
+                    }
+                    
+                    ForEach(Array(visibleInputs.enumerated()), id: \.element.id) { idx, displayPort in
+                        RackGroupedPortDot(
+                            instance: item.inst,
+                            displayPort: displayPort
                         )
                         .position(
                             x: 0,
-                            y: itemTopY + evenPortY(idx: idx, total: visInputs.count, height: itemH)
+                            y: itemTopY + evenPortY(
+                                idx: idx,
+                                total: max(visibleInputs.count, 1),
+                                height: itemH
+                            )
                         )
                     }
-
-                    ForEach(Array(visOutputs.enumerated()), id: \.offset) { idx, port in
-                        PortEdgeDot(
+                    
+                    ForEach(Array(visibleOutputs.enumerated()), id: \.element.id) { idx, displayPort in
+                        RackGroupedPortDot(
                             instance: item.inst,
-                            portIndex: idx,
-                            side: "out",
-                            total: visOutputs.count,
-                            label: "",
-                            signalType: port.signalType,
-                            bundleStyle: port.bundleStyle
+                            displayPort: displayPort
                         )
                         .position(
                             x: geo.size.width,
-                            y: itemTopY + evenPortY(idx: idx, total: visOutputs.count, height: itemH)
+                            y: itemTopY + evenPortY(
+                                idx: idx,
+                                total: max(visibleOutputs.count, 1),
+                                height: itemH
+                            )
                         )
                     }
                 }
             }
         }
     }
-
+    
     // MARK: - Slot row helpers
-
+    
     @ViewBuilder
     private func rackItemRow(item: SlotItem) -> some View {
         let itemH = CGFloat(item.rowSpan) * Self.unitH
@@ -960,7 +1278,7 @@ struct RackNodeView: View {
         .frame(height: itemH)
         .background(catColor.opacity(0.08))
     }
-
+    
     @ViewBuilder
     private func emptySlotRow(i: Int) -> some View {
         HStack {

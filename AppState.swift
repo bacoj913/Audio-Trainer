@@ -67,19 +67,28 @@ class CanvasTab: ObservableObject, Identifiable {
 }
 
 // MARK: - Connection
-struct NodeConnection: Identifiable, Equatable {
+struct NodeConnection: Identifiable, Codable, Equatable {
     let id: UUID
-    let fromId: UUID
-    let fromPortIndex: Int   // index into comp.ports.outputs
-    let toId: UUID
-    let toPortIndex: Int     // index into comp.ports.inputs
+    var fromId: UUID
+    var fromPortIndex: Int
+    var toId: UUID
+    var toPortIndex: Int
+    var routePoints: [CGPoint] = []
 
-    init(id: UUID = UUID(), fromId: UUID, fromPortIndex: Int, toId: UUID, toPortIndex: Int) {
+    init(
+        id: UUID = UUID(),
+        fromId: UUID,
+        fromPortIndex: Int,
+        toId: UUID,
+        toPortIndex: Int,
+        routePoints: [CGPoint] = []
+    ) {
         self.id = id
         self.fromId = fromId
         self.fromPortIndex = fromPortIndex
         self.toId = toId
         self.toPortIndex = toPortIndex
+        self.routePoints = routePoints
     }
 }
 
