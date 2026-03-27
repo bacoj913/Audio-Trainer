@@ -28,6 +28,7 @@
 		51B50B322F7613A200E018E7 /* SignalRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B50B2F2F7613A200E018E7 /* SignalRules.swift */; };
 		51B50B332F7613A200E018E7 /* AESRuleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B50B2D2F7613A200E018E7 /* AESRuleData.swift */; };
 		51B50B342F7613A200E018E7 /* IntercomRuleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B50B2E2F7613A200E018E7 /* IntercomRuleData.swift */; };
+		51B50B372F7615F100E018E7 /* SavedProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B50B362F7615F100E018E7 /* SavedProject.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +54,7 @@
 		51B50B2E2F7613A200E018E7 /* IntercomRuleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntercomRuleData.swift; sourceTree = "<group>"; };
 		51B50B2F2F7613A200E018E7 /* SignalRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalRules.swift; sourceTree = "<group>"; };
 		51B50B302F7613A200E018E7 /* SpeakerCableRuleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerCableRuleData.swift; sourceTree = "<group>"; };
+		51B50B362F7615F100E018E7 /* SavedProject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedProject.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -111,6 +113,7 @@
 				5131C89F2F72F6DD00C5E043 /* Data */,
 				5131C8A02F72F6F500C5E043 /* Views */,
 				5131C8942F72F23700C5E043 /* AppState.swift */,
+				51B50B362F7615F100E018E7 /* SavedProject.swift */,
 				5131C8952F72F23700C5E043 /* AudioSignalFlowTrainerApp.swift */,
 			);
 			sourceTree = "<group>";
@@ -211,6 +214,7 @@
 				51B50B322F7613A200E018E7 /* SignalRules.swift in Sources */,
 				51B50B332F7613A200E018E7 /* AESRuleData.swift in Sources */,
 				51B50B342F7613A200E018E7 /* IntercomRuleData.swift in Sources */,
+				51B50B372F7615F100E018E7 /* SavedProject.swift in Sources */,
 				5131C8892F72F20200C5E043 /* ExerciseData.swift in Sources */,
 				5131C88A2F72F20200C5E043 /* RFData.swift in Sources */,
 				5131C88B2F72F20200C5E043 /* Component.swift in Sources */,
