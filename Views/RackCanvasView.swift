@@ -559,11 +559,12 @@ struct RackCanvasFacePort: View {
             VlanPickerPopover(instance: instance, portIndex: portIndex, label: label)
                 .environmentObject(appState)
         }
-        .onTapGesture {
+        .contextMenu {
             if isNetworkSwitch {
-                showingVlanPicker = true
-                return
+                Button("Set VLAN Tag…") { showingVlanPicker = true }
             }
+        }
+        .onTapGesture {
             if side == "out" {
                 if !isConnecting {
                     appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)

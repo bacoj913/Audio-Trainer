@@ -427,22 +427,8 @@ struct StandardNodeView: View {
         )
         .onHover { isHovered = $0 }
         .contentShape(Rectangle())
-        .offset(x: dragOffset.width, y: dragOffset.height)
-        .gesture(
-            DragGesture(minimumDistance: 4)
-                .updating($dragOffset) { value, state, _ in
-                    guard appState.connectingFromId == nil else { return }
-                    state = value.translation
-                }
-                .onEnded { value in
-                    guard appState.connectingFromId == nil else { return }
-                    instance.position = CGPoint(
-                        x: max(0, instance.position.x + value.translation.width),
-                        y: max(0, instance.position.y + value.translation.height)
-                    )
-                }
-        )
         // MARK: - Per-port interactive dots on card edges
+        // Must be BEFORE .offset() so dots move with the card during drag
         .overlay {
             GeometryReader { geo in
                 let effectivePorts = instance.effectivePorts ?? comp.ports
@@ -454,9 +440,9 @@ struct StandardNodeView: View {
                     labels: effectivePorts.outputs,
                     signalTypes: instance.effectiveOutputTypes ?? comp.outputs
                 )
-                
+
                 let rowCount = max(inputPorts.count, outputPorts.count)
-                
+
                 ForEach(Array(inputPorts.enumerated()), id: \.offset) {
                     idx,
                     port in
@@ -474,7 +460,7 @@ struct StandardNodeView: View {
                         y: bodyPortY(idx: idx, rowCount: rowCount)
                     )
                 }
-                
+
                 ForEach(Array(outputPorts.enumerated()), id: \.offset) {
                     idx,
                     port in
@@ -494,6 +480,21 @@ struct StandardNodeView: View {
                 }
             }
         }
+        .offset(x: dragOffset.width, y: dragOffset.height)
+        .gesture(
+            DragGesture(minimumDistance: 4)
+                .updating($dragOffset) { value, state, _ in
+                    guard appState.connectingFromId == nil else { return }
+                    state = value.translation
+                }
+                .onEnded { value in
+                    guard appState.connectingFromId == nil else { return }
+                    instance.position = CGPoint(
+                        x: max(0, instance.position.x + value.translation.width),
+                        y: max(0, instance.position.y + value.translation.height)
+                    )
+                }
+        )
     }
 }
 
@@ -1275,35 +1276,7 @@ struct RackNodeView: View {
         )
         .onHover { isHovered = $0 }
         .contentShape(Rectangle())
-        .offset(x: dragOffset.width, y: dragOffset.height)
-        .gesture(
-            DragGesture(minimumDistance: 4)
-                .updating($dragOffset) { value, state, _ in
-                    guard appState.connectingFromId == nil else { return }
-                    state = value.translation
-                }
-                .onEnded { value in
-                    guard appState.connectingFromId == nil else { return }
-                    instance.position = CGPoint(
-                        x: max(0, instance.position.x + value.translation.width),
-                        y: max(0, instance.position.y + value.translation.height)
-                    )
-                }
-        )
-        .onPreferenceChange(RackHeaderHeightKey.self) { h in
-            headerHeight = h
-        }
-        .sheet(isPresented: $showingSaveSheet) {
-            SaveRackSheet(
-                rackName: $saveRackName,
-                onSave: { name in
-                    appState.saveRackToMyEquipment(instanceId: instance.id, name: name)
-                    showingSaveSheet = false
-                },
-                onCancel: { showingSaveSheet = false }
-            )
-        }
-        // Cross-rack port dots — rendered AFTER clipShape so they extend outside card edges
+        // Cross-rack port dots — must be BEFORE .offset() so dots move with the card during drag
         .overlay {
             GeometryReader { geo in
                 ForEach(items, id: \.inst.id) { item in
@@ -1361,8 +1334,36 @@ struct RackNodeView: View {
                 }
             }
         }
+        .offset(x: dragOffset.width, y: dragOffset.height)
+        .gesture(
+            DragGesture(minimumDistance: 4)
+                .updating($dragOffset) { value, state, _ in
+                    guard appState.connectingFromId == nil else { return }
+                    state = value.translation
+                }
+                .onEnded { value in
+                    guard appState.connectingFromId == nil else { return }
+                    instance.position = CGPoint(
+                        x: max(0, instance.position.x + value.translation.width),
+                        y: max(0, instance.position.y + value.translation.height)
+                    )
+                }
+        )
+        .onPreferenceChange(RackHeaderHeightKey.self) { h in
+            headerHeight = h
+        }
+        .sheet(isPresented: $showingSaveSheet) {
+            SaveRackSheet(
+                rackName: $saveRackName,
+                onSave: { name in
+                    appState.saveRackToMyEquipment(instanceId: instance.id, name: name)
+                    showingSaveSheet = false
+                },
+                onCancel: { showingSaveSheet = false }
+            )
+        }
     }
-    
+
     // MARK: - Slot row helpers
     
     @ViewBuilder
