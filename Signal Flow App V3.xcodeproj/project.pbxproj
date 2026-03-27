@@ -24,6 +24,11 @@
 		5131C89E2F72F23700C5E043 /* ExerciseBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C88E2F72F23700C5E043 /* ExerciseBuilderView.swift */; };
 		5131C8A22F72F23700C5E043 /* CanvasTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8A32F72F23700C5E043 /* CanvasTabBar.swift */; };
 		5131C8A42F72F23700C5E043 /* RackCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5131C8A52F72F23700C5E043 /* RackCanvasView.swift */; };
+		AA01000000000000000000A1 /* SignalRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000000B1 /* SignalRules.swift */; };
+		AA01000000000000000000A2 /* SavedProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000000B2 /* SavedProject.swift */; };
+		AA01000000000000000000A3 /* AESRuleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000000B3 /* AESRuleData.swift */; };
+		AA01000000000000000000A4 /* IntercomRuleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000000B4 /* IntercomRuleData.swift */; };
+		AA01000000000000000000A5 /* SpeakerCableRuleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000000000B5 /* SpeakerCableRuleData.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +50,11 @@
 		5131C8A32F72F23700C5E043 /* CanvasTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasTabBar.swift; sourceTree = "<group>"; };
 		5131C8A52F72F23700C5E043 /* RackCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackCanvasView.swift; sourceTree = "<group>"; };
 		5190CFC72F72BC8400D14744 /* Signal Flow App V3.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Signal Flow App V3.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA01000000000000000000B1 /* SignalRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalRules.swift; sourceTree = "<group>"; };
+		AA01000000000000000000B2 /* SavedProject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedProject.swift; sourceTree = "<group>"; };
+		AA01000000000000000000B3 /* AESRuleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AESRuleData.swift; sourceTree = "<group>"; };
+		AA01000000000000000000B4 /* IntercomRuleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntercomRuleData.swift; sourceTree = "<group>"; };
+		AA01000000000000000000B5 /* SpeakerCableRuleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerCableRuleData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +74,9 @@
 				5131C8842F72F20200C5E043 /* ComponentData.swift */,
 				5131C8862F72F20200C5E043 /* ExerciseData.swift */,
 				5131C8872F72F20200C5E043 /* RFData.swift */,
+				AA01000000000000000000B3 /* AESRuleData.swift */,
+				AA01000000000000000000B4 /* IntercomRuleData.swift */,
+				AA01000000000000000000B5 /* SpeakerCableRuleData.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -90,6 +103,8 @@
 			children = (
 				5131C8832F72F20200C5E043 /* Component.swift */,
 				5131C8852F72F20200C5E043 /* Exercise.swift */,
+				AA01000000000000000000B1 /* SignalRules.swift */,
+				AA01000000000000000000B2 /* SavedProject.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -203,6 +218,11 @@
 				5131C8A42F72F23700C5E043 /* RackCanvasView.swift in Sources */,
 				5131C88C2F72F20200C5E043 /* ComponentData.swift in Sources */,
 				5131C8822F72E6E000C5E043 /* ContentView.swift in Sources */,
+			AA01000000000000000000A1 /* SignalRules.swift in Sources */,
+			AA01000000000000000000A2 /* SavedProject.swift in Sources */,
+			AA01000000000000000000A3 /* AESRuleData.swift in Sources */,
+			AA01000000000000000000A4 /* IntercomRuleData.swift in Sources */,
+			AA01000000000000000000A5 /* SpeakerCableRuleData.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
