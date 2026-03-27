@@ -97,6 +97,83 @@ func rackGearPortX(idx: Int, total: Int, span: ClosedRange<CGFloat>) -> CGFloat 
     return minX + CGFloat(idx) * step
 }
 
+func rackFacePortFamilyName(signalType: String, fallbackLabel: String) -> String {
+    let normalized = signalType
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased()
+
+    switch normalized {
+    case "dante", "aes67", "milan", "avb", "network":
+        return "Dante"
+    case "aes", "aes3":
+        return "AES"
+    case "madi":
+        return "MADI"
+    case "mic":
+        return "Mic"
+    case "line", "analog":
+        return "Line"
+    case "speaker":
+        return "Spk"
+    default:
+        if !fallbackLabel.isEmpty {
+            let firstWord = fallbackLabel
+                .split(separator: " ")
+                .first
+                .map(String.init) ?? ""
+            return firstWord.isEmpty ? "Port" : firstWord
+        }
+        return "Port"
+    }
+}
+
+func rackFacePortTrailingNumber(from label: String, fallback index: Int) -> String {
+    let digits = label.reversed().prefix { $0.isNumber }.reversed()
+    if !digits.isEmpty {
+        return String(digits)
+    }
+    return "\(index + 1)"
+}
+
+func rackFaceCompactLabel(
+    for port: VisualPort,
+    portIndex: Int
+) -> String {
+    let family = rackFacePortFamilyName(
+        signalType: port.signalType,
+        fallbackLabel: port.label
+    )
+    let number = rackFacePortTrailingNumber(
+        from: port.label,
+        fallback: portIndex
+    )
+    return "\(family) \(number)"
+}
+
+func rackFaceDisplayLabel(
+    for port: VisualPort,
+    portIndex: Int,
+    inRowCount rowCount: Int,
+    totalSideCount: Int
+) -> String {
+    if rowCount <= 4 && totalSideCount <= 8 {
+        return port.label
+    }
+
+    if rowCount <= 8 {
+        return rackFaceCompactLabel(
+            for: port,
+            portIndex: portIndex
+        )
+    }
+
+    // Extremely dense rows: still keep names, but only compact ones
+    return rackFaceCompactLabel(
+        for: port,
+        portIndex: portIndex
+    )
+}
+
 // MARK: - RackCanvasView
 struct RackCanvasView: View {
     @EnvironmentObject var appState: AppState
@@ -225,7 +302,7 @@ struct RackCanvasView: View {
 
             Text(tab.name)
                 .font(.system(size: 12, weight: .semibold))
-
+// FIXME: Rack Units internally are doubled from actual
             if let comp = rackComp {
                 Text("· \(comp.rackUnits * 2)U capacity")
                     .font(.system(size: 11))
@@ -375,6 +452,7 @@ struct RackCanvasFacePort: View {
     var label: String = ""
     var signalType: String = "line"
     var bundleStyle: PortGroup.BundleStyle = .single
+    var compactFor1U: Bool = false
 
     @EnvironmentObject var appState: AppState
 
@@ -399,29 +477,54 @@ struct RackCanvasFacePort: View {
         }
     }
 
+    private var portShellWidth: CGFloat {
+        compactFor1U ? 24 : 28
+    }
+
+    private var portShellHeight: CGFloat {
+        compactFor1U ? 14 : 16
+    }
+
+    private var labelWidth: CGFloat {
+        compactFor1U ? 38 : 44
+    }
+
+    private var totalHeight: CGFloat {
+        label.isEmpty ? (compactFor1U ? 16 : 18) : (compactFor1U ? 27 : 30)
+    }
+
+    private var glyphScale: CGFloat {
+        compactFor1U ? 0.82 : 1.0
+    }
+
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: compactFor1U ? 1 : 2) {
             if !label.isEmpty {
                 Text(label)
-                    .font(.system(size: 7, weight: .medium))
-                    .foregroundColor(.primary.opacity(0.72))
+                    .font(.system(size: compactFor1U ? 6 : 7, weight: .medium))
+                    .foregroundColor(.primary.opacity(0.78))
                     .lineLimit(1)
-                    .fixedSize()
+                    .minimumScaleFactor(0.6)
+                    .truncationMode(.tail)
+                    .frame(width: labelWidth, alignment: .center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .allowsHitTesting(false)
             }
 
             ZStack {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(Color.black.opacity(0.10))
-                    .frame(width: 28, height: 16)
+                    .frame(width: portShellWidth, height: portShellHeight)
 
                 PortGlyph(
                     color: color,
                     bundleStyle: bundleStyle,
                     showDisconnectMark: isConnected && side == "in" && !isConnecting
                 )
+                .scaleEffect(glyphScale)
             }
         }
+        .frame(width: labelWidth, height: totalHeight, alignment: .top)
         .contentShape(Rectangle())
         .shadow(
             color: color.opacity(0.45),
@@ -471,7 +574,13 @@ struct RackGearItem: View {
         CGFloat(max(comp.rackUnits, 1)) * unitHeight
     }
 
-    private var headerHeight: CGFloat { 28 }
+    private var isCompact1UNetwork: Bool {
+        comp.rackUnits == 1 && comp.iconName == "network"
+    }
+
+    private var headerHeight: CGFloat {
+        isCompact1UNetwork ? 20 : 28
+    }
 
     private var currentRackSlot: Int {
         instance.rackSlot ?? 0
@@ -491,6 +600,10 @@ struct RackGearItem: View {
 
     private var effectiveOutputTypes: [String] {
         instance.effectiveOutputTypes ?? comp.outputs
+    }
+    
+    private var useCompactNetworkPorts: Bool {
+        isCompact1UNetwork
     }
 
     private func clampedRackSlot(for translation: CGFloat) -> Int {
@@ -521,13 +634,16 @@ struct RackGearItem: View {
 
                         HStack(spacing: 6) {
                             ComponentIcon(name: comp.iconName)
-                                .frame(width: 16, height: 16)
+                                .frame(
+                                    width: isCompact1UNetwork ? 13 : 16,
+                                    height: isCompact1UNetwork ? 13 : 16
+                                )
                                 .foregroundColor(
                                     Color.categoryColor(comp.category).wcagContrastingTextColor
                                 )
 
                             Text(comp.name)
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.system(size: isCompact1UNetwork ? 10 : 11, weight: .semibold))
                                 .foregroundColor(
                                     Color.categoryColor(comp.category).wcagContrastingTextColor
                                 )
@@ -537,7 +653,7 @@ struct RackGearItem: View {
 
                             if comp.rackUnits > 0 {
                                 Text("\(comp.rackUnits)U")
-                                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                    .font(.system(size: isCompact1UNetwork ? 8 : 9, weight: .medium, design: .monospaced))
                                     .foregroundColor(
                                         Color.categoryColor(comp.category)
                                             .wcagContrastingTextColor
@@ -579,7 +695,7 @@ struct RackGearItem: View {
                             .buttonStyle(.plain)
                             .opacity(isHovered ? 1 : 0.75)
                         }
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, isCompact1UNetwork ? 6 : 8)
                     }
 
                     Spacer(minLength: 0)
@@ -587,7 +703,7 @@ struct RackGearItem: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: itemHeight - 4)
+            .frame(height: itemHeight - (isCompact1UNetwork ? 10 : 4))
             .overlay {
                 GeometryReader { geo in
                     let visualRows = max(comp.rackUnits - 1, 1)
@@ -626,9 +742,9 @@ struct RackGearItem: View {
                             row: row,
                             totalRows: visualRows,
                             height: geo.size.height,
-                            headerHeight: headerHeight + 2
+                            headerHeight: headerHeight + (isCompact1UNetwork ? 4 : 8)
                         )
-
+                        
                         ForEach(Array(inputRow.enumerated()), id: \.element) { rowIndex, originalIndex in
                             let port = inputPorts[originalIndex]
 
@@ -636,9 +752,15 @@ struct RackGearItem: View {
                                 instance: instance,
                                 portIndex: originalIndex,
                                 side: "in",
-                                label: port.label,
+                                label: rackFaceDisplayLabel(
+                                    for: port,
+                                    portIndex: originalIndex,
+                                    inRowCount: inputRow.count,
+                                    totalSideCount: inputPorts.count
+                                ),
                                 signalType: port.signalType,
-                                bundleStyle: port.bundleStyle
+                                bundleStyle: port.bundleStyle,
+                                compactFor1U: useCompactNetworkPorts && port.bundleStyle == .network
                             )
                             .position(
                                 x: rackGearPortX(
@@ -657,9 +779,15 @@ struct RackGearItem: View {
                                 instance: instance,
                                 portIndex: originalIndex,
                                 side: "out",
-                                label: port.label,
+                                label: rackFaceDisplayLabel(
+                                    for: port,
+                                    portIndex: originalIndex,
+                                    inRowCount: outputRow.count,
+                                    totalSideCount: outputPorts.count
+                                ),
                                 signalType: port.signalType,
-                                bundleStyle: port.bundleStyle
+                                bundleStyle: port.bundleStyle,
+                                compactFor1U: useCompactNetworkPorts && port.bundleStyle == .network
                             )
                             .position(
                                 x: rackGearPortX(

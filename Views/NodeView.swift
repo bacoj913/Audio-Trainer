@@ -107,6 +107,34 @@ func standardNodeWidth(for comp: Component) -> CGFloat {
     
     return max(baseWidth, totalLabelWidth)
 }
+func rackDisplayFamilyKey(signalType: String, bundleStyle: PortGroup.BundleStyle) -> String {
+    let normalized = signalType
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased()
+
+    switch normalized {
+    case "mic", "line", "analog", "instrument":
+        return "analog"
+    case "aes", "aes3":
+        return "aes"
+    case "madi":
+        return "madi"
+    case "dante", "aes67", "milan", "avb", "network":
+        return "network"
+    default:
+        switch bundleStyle {
+        case .network:
+            return "network"
+        case .stereoPair:
+            return "aes"
+        case .multichannel:
+            return "multichannel"
+        default:
+            return normalized
+        }
+    }
+}
+
 func makeRackDisplayPorts(
     labels: [String],
     signalTypes: [String],
@@ -120,9 +148,10 @@ func makeRackDisplayPorts(
     var orderedKeys: [String] = []
 
     for (idx, port) in visualPorts.enumerated() {
-        let key = port.signalType
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
+        let key = rackDisplayFamilyKey(
+            signalType: port.signalType,
+            bundleStyle: port.bundleStyle
+        )
 
         if groupedIndexes[key] == nil {
             groupedIndexes[key] = []
@@ -646,38 +675,44 @@ struct RackGroupedPortDot: View {
         "\(usedIndexes.count)/\(displayPort.portIndexes.count)"
     }
 
+    private var badgeAlignment: Alignment {
+        displayPort.side == "in" ? .bottomLeading : .bottomTrailing
+    }
+
+    private var badgeXOffset: CGFloat {
+        displayPort.side == "in" ? -10 : 10
+    }
+
     var body: some View {
         ZStack {
             Color.clear
                 .frame(
-                    width: NodeView.portHitWidth + 8,
-                    height: NodeView.portHitHeight + 8
+                    width: NodeView.portHitWidth + 14,
+                    height: NodeView.portHitHeight + 12
                 )
 
-            VStack(spacing: 3) {
-                ZStack(alignment: .bottomTrailing) {
-                    PortGlyph(
-                        color: color,
-                        bundleStyle: displayPort.bundleStyle,
-                        showDisconnectMark: false
-                    )
-                    .shadow(
-                        color: color.opacity(
-                            canReceiveConnection || canStartConnection ? 0.45 : 0.18
-                        ),
-                        radius: canReceiveConnection || canStartConnection ? 6 : 0
-                    )
+            ZStack(alignment: badgeAlignment) {
+                PortGlyph(
+                    color: color,
+                    bundleStyle: displayPort.bundleStyle,
+                    showDisconnectMark: false
+                )
+                .shadow(
+                    color: color.opacity(
+                        canReceiveConnection || canStartConnection ? 0.45 : 0.18
+                    ),
+                    radius: canReceiveConnection || canStartConnection ? 6 : 0
+                )
 
-                    Text(occupancyText)
-                        .font(.system(size: 7, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.primary.opacity(0.72))
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.95))
-                        .clipShape(Capsule())
-                        .offset(x: 12, y: 8)
-                        .allowsHitTesting(false)
-                }
+                Text(occupancyText)
+                    .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.primary.opacity(0.78))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(Color(nsColor: .controlBackgroundColor).opacity(0.96))
+                    .clipShape(Capsule())
+                    .offset(x: badgeXOffset, y: 10)
+                    .allowsHitTesting(false)
             }
             .opacity(availableIndexes.isEmpty ? 0.35 : 1)
         }
@@ -687,7 +722,8 @@ struct RackGroupedPortDot: View {
                 Color.clear.preference(
                     key: PortAnchorPref.self,
                     value: [
-                        "\(instance.id)-\(displayPort.side)-group-\(displayPort.signalType)": geo.frame(in: .named("canvas")).center
+                        "\(instance.id)-\(displayPort.side)-group-\(displayPort.signalType)":
+                            geo.frame(in: .named("canvas")).center
                     ]
                 )
             }
@@ -695,7 +731,10 @@ struct RackGroupedPortDot: View {
         .onTapGesture {
             handleTap()
         }
-        .popover(isPresented: $showingPicker, arrowEdge: displayPort.side == "in" ? .leading : .trailing) {
+        .popover(
+            isPresented: $showingPicker,
+            arrowEdge: displayPort.side == "in" ? .leading : .trailing
+        ) {
             RackGroupedPortPicker(
                 instance: instance,
                 displayPort: displayPort,
