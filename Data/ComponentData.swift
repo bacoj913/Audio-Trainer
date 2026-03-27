@@ -200,7 +200,6 @@ enum Components {
             inputGroups: [
                 PortGroup(connector: "Local XLR", count: 24, signalType: "mic"),
                 PortGroup(connector: "MADI", count: 2, signalType: "madi"),
-                PortGroup(connector: "Dante", count: 1, signalType: "dante")
             ],
             outputGroups: [
                 PortGroup(connector: "Local XLR", count: 12, signalType: "line"),
@@ -219,12 +218,11 @@ enum Components {
                 model: "PM7",
             inputGroups: [
                 PortGroup(connector: "Local XLR", count: 8, signalType: "mic"),
-                PortGroup(connector: "Dante", count: 64, signalType: "dante"),
                 PortGroup(connector: "MADI", count: 1, signalType: "madi")
             ],
             outputGroups: [
                 PortGroup(connector: "Local XLR", count: 8, signalType: "line"),
-                PortGroup(connector: "Dante", count: 64, signalType: "dante"),
+                PortGroup(connector: "Dante", count: 2, signalType: "dante"),
                 PortGroup(connector: "MADI", count: 1, signalType: "madi")
             ],
             desc: "Digital mixing console, Dante/MADI",
@@ -238,12 +236,11 @@ enum Components {
                 model: "Live L550",
             inputGroups: [
                 PortGroup(connector: "Local XLR", count: 16, signalType: "mic"),
-                PortGroup(connector: "Dante", count: 64, signalType: "dante"),
                 PortGroup(connector: "MADI", count: 2, signalType: "madi")
             ],
             outputGroups: [
                 PortGroup(connector: "Local XLR", count: 16, signalType: "line"),
-                PortGroup(connector: "Dante", count: 64, signalType: "dante"),
+                PortGroup(connector: "Dante", count: 2, signalType: "dante"),
                 PortGroup(connector: "MADI", count: 2, signalType: "madi")
             ],
             desc: "SSL digital live console",
