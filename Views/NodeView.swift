@@ -391,12 +391,13 @@ struct PortEdgeDot: View {
     private var isConnecting: Bool { appState.connectingFromId != nil }
     
     private var isConnected: Bool {
+        let allConns = appState.activeTab.connections + appState.crossTabConnections
         if side == "in" {
-            return appState.activeTab.connections.contains {
+            return allConns.contains {
                 $0.toId == instance.id && $0.toPortIndex == portIndex
             }
         } else {
-            return appState.activeTab.connections.contains {
+            return allConns.contains {
                 $0.fromId == instance.id && $0.fromPortIndex == portIndex
             }
         }
@@ -695,23 +696,80 @@ struct PortPill: View {
 }
 
 // MARK: - Rack Node
+// MARK: - Rack Node Header Height Preference
+private struct RackHeaderHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 31
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct RackNodeView: View {
     @ObservedObject var instance: NodeInstance
     let comp: Component
     @EnvironmentObject var appState: AppState
     @State private var isHovered = false
     @State private var dragStartPos: CGPoint?
-    
+    /// Measured height of the top bar + header HStack, used to position cross-rack port dots.
+    @State private var headerHeight: CGFloat = 31
+
+    private static let topBarH: CGFloat = 3
+    private static let unitH: CGFloat = 20   // NodeView.rackUnitHeight
+
+    // MARK: - Rack tab / slot items
+
+    private var rackTab: CanvasTab? {
+        appState.tabs.first { $0.parentRackInstanceId == instance.id }
+    }
+
+    private struct SlotItem {
+        let topRow: Int
+        let rowSpan: Int
+        let inst: NodeInstance
+        let comp: Component
+    }
+
+    private var slotItems: [SlotItem] {
+        guard let tab = rackTab else { return [] }
+        return tab.instances.compactMap { inst -> SlotItem? in
+            guard let c = Components.all[inst.type] else { return nil }
+            let topRow = min((inst.rackSlot ?? 0) / 2, comp.rackUnits - 1)
+            return SlotItem(topRow: topRow, rowSpan: max(1, c.rackUnits), inst: inst, comp: c)
+        }.sorted { $0.topRow < $1.topRow }
+    }
+
+    private var occupiedByItem: [Int: SlotItem] {
+        var dict: [Int: SlotItem] = [:]
+        for item in slotItems { dict[item.topRow] = item }
+        return dict
+    }
+
+    private var continuationRows: Set<Int> {
+        var rows = Set<Int>()
+        for item in slotItems {
+            for r in (item.topRow + 1)..<(item.topRow + item.rowSpan) {
+                rows.insert(r)
+            }
+        }
+        return rows
+    }
+
+    // MARK: - Body
+
     var body: some View {
+        let items = slotItems
+        let occupied = occupiedByItem
+        let continued = continuationRows
+
         VStack(alignment: .leading, spacing: 0) {
+            // Top color bar
             Rectangle()
                 .fill(Color.categoryColor(comp.category))
-                .frame(height: 3)
-            
+                .frame(height: Self.topBarH)
+
+            // Header — measure combined height for port positioning
             HStack {
                 ComponentIcon(name: comp.iconName)
                     .frame(width: 16, height: 16)
-                
+
                 VStack(alignment: .leading, spacing: 1) {
                     Text(comp.name)
                         .font(.system(size: 11, weight: .semibold))
@@ -719,9 +777,9 @@ struct RackNodeView: View {
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 Button {
                     appState.openRackTab(for: instance.id)
                 } label: {
@@ -736,7 +794,7 @@ struct RackNodeView: View {
                 .buttonStyle(.plain)
                 .opacity(isHovered ? 1 : 0)
                 .padding(.trailing, 2)
-                
+
                 Button {
                     appState.deleteNode(id: instance.id)
                 } label: {
@@ -749,31 +807,23 @@ struct RackNodeView: View {
             }
             .padding(.horizontal, 9)
             .padding(.vertical, 6)
-            
+            .background(GeometryReader { geo in
+                Color.clear.preference(
+                    key: RackHeaderHeightKey.self,
+                    value: Self.topBarH + geo.size.height
+                )
+            })
+
+            // Rack body: slot rows
             VStack(spacing: 0) {
                 ForEach(0..<comp.rackUnits, id: \.self) { i in
-                    HStack {
-                        Text("\(comp.rackUnits - i)U")
-                            .font(
-                                .system(
-                                    size: 8,
-                                    weight: .medium,
-                                    design: .monospaced
-                                )
-                            )
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 9)
-                    .frame(height: 20)
-                    .background(
-                        i.isMultiple(of: 2)
-                        ? Color.primary.opacity(0.03)
-                        : Color.clear
-                    )
-                    
-                    if i < comp.rackUnits - 1 {
-                        Divider().opacity(0.3)
+                    if continued.contains(i) {
+                        // Continuation of a multi-U item — no row rendered
+                        Color.clear.frame(height: 0)
+                    } else if let item = occupied[i] {
+                        rackItemRow(item: item)
+                    } else {
+                        emptySlotRow(i: i)
                     }
                 }
             }
@@ -799,10 +849,104 @@ struct RackNodeView: View {
                         y: max(0, start.y + value.translation.height)
                     )
                 }
-                .onEnded { _ in
-                    dragStartPos = nil
-                }
+                .onEnded { _ in dragStartPos = nil }
         )
+        .onPreferenceChange(RackHeaderHeightKey.self) { h in
+            headerHeight = h
+        }
+        // Cross-rack port dots — rendered AFTER clipShape so they extend outside card edges
+        .overlay {
+            GeometryReader { geo in
+                ForEach(items, id: \.inst.id) { item in
+                    let itemTopY = headerHeight + CGFloat(item.topRow) * Self.unitH
+                    let itemH = CGFloat(item.rowSpan) * Self.unitH
+                    let effectivePorts = item.inst.effectivePorts ?? item.comp.ports
+                    let inputPorts = makeVisualPorts(
+                        labels: effectivePorts.inputs,
+                        signalTypes: item.inst.effectiveInputTypes ?? item.comp.inputs
+                    )
+                    let outputPorts = makeVisualPorts(
+                        labels: effectivePorts.outputs,
+                        signalTypes: item.inst.effectiveOutputTypes ?? item.comp.outputs
+                    )
+                    // Limit displayed ports so they don't crowd in small slots
+                    let maxPorts = max(1, Int(itemH / 14))
+                    let visInputs = Array(inputPorts.prefix(maxPorts))
+                    let visOutputs = Array(outputPorts.prefix(maxPorts))
+
+                    ForEach(Array(visInputs.enumerated()), id: \.offset) { idx, port in
+                        PortEdgeDot(
+                            instance: item.inst,
+                            portIndex: idx,
+                            side: "in",
+                            total: visInputs.count,
+                            label: "",
+                            signalType: port.signalType,
+                            bundleStyle: port.bundleStyle
+                        )
+                        .position(
+                            x: 0,
+                            y: itemTopY + evenPortY(idx: idx, total: visInputs.count, height: itemH)
+                        )
+                    }
+
+                    ForEach(Array(visOutputs.enumerated()), id: \.offset) { idx, port in
+                        PortEdgeDot(
+                            instance: item.inst,
+                            portIndex: idx,
+                            side: "out",
+                            total: visOutputs.count,
+                            label: "",
+                            signalType: port.signalType,
+                            bundleStyle: port.bundleStyle
+                        )
+                        .position(
+                            x: geo.size.width,
+                            y: itemTopY + evenPortY(idx: idx, total: visOutputs.count, height: itemH)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Slot row helpers
+
+    @ViewBuilder
+    private func rackItemRow(item: SlotItem) -> some View {
+        let itemH = CGFloat(item.rowSpan) * Self.unitH
+        let catColor = Color.categoryColor(item.comp.category)
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(catColor)
+                .frame(width: 4)
+            HStack {
+                Text(item.comp.name)
+                    .font(.system(size: 9, weight: .semibold))
+                    .lineLimit(1)
+                    .foregroundColor(.primary)
+                Spacer()
+                Text("\(item.comp.rackUnits)U")
+                    .font(.system(size: 8, weight: .medium, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 6)
+        }
+        .frame(height: itemH)
+        .background(catColor.opacity(0.08))
+    }
+
+    @ViewBuilder
+    private func emptySlotRow(i: Int) -> some View {
+        HStack {
+            Text("\(comp.rackUnits - i)U")
+                .font(.system(size: 8, weight: .medium, design: .monospaced))
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, 9)
+        .frame(height: Self.unitH)
+        .background(i.isMultiple(of: 2) ? Color.primary.opacity(0.03) : Color.clear)
     }
 }
 // MARK: - SF Symbol icon wrapper

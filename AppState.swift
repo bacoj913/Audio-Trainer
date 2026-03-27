@@ -99,6 +99,7 @@ class AppState: ObservableObject {
     @Published var rfState: RFState = RFState()
     @Published var canvasScale: CGFloat = 1.0
     @Published var canvasOffset: CGSize = .zero
+    @Published var crossTabConnections: [NodeConnection] = []
 
     // MARK: - Tab system
     @Published var tabs: [CanvasTab] = [CanvasTab(name: "Main")]
@@ -177,11 +178,15 @@ class AppState: ObservableObject {
 
     func deleteNode(id: UUID) {
         activeTab.connections.removeAll { $0.fromId == id || $0.toId == id }
+        crossTabConnections.removeAll { $0.fromId == id || $0.toId == id }
         activeTab.portPositions = activeTab.portPositions.filter { !$0.key.hasPrefix(id.uuidString) }
         activeTab.instances.removeAll { $0.id == id }
         if connectingFromId == id { connectingFromId = nil }
-        // Also close any rack tab for this instance
+        // Also close any rack tab for this instance (and remove its internal gear's cross-tab connections)
         if let rackTabIdx = tabs.firstIndex(where: { $0.parentRackInstanceId == id }) {
+            let rackTab = tabs[rackTabIdx]
+            let rackInstanceIds = Set(rackTab.instances.map { $0.id })
+            crossTabConnections.removeAll { rackInstanceIds.contains($0.fromId) || rackInstanceIds.contains($0.toId) }
             tabs.remove(at: rackTabIdx)
             activeTabIndex = max(0, min(activeTabIndex, tabs.count - 1))
             observeActiveTab()
@@ -189,6 +194,8 @@ class AppState: ObservableObject {
     }
 
     func clearCanvas() {
+        let instanceIds = Set(activeTab.instances.map { $0.id })
+        crossTabConnections.removeAll { instanceIds.contains($0.fromId) || instanceIds.contains($0.toId) }
         activeTab.instances.removeAll()
         activeTab.connections.removeAll()
         activeTab.portPositions.removeAll()
@@ -207,6 +214,16 @@ class AppState: ObservableObject {
         }
     }
 
+    // MARK: - Cross-tab helpers
+    func findInstance(id: UUID) -> (NodeInstance, CanvasTab)? {
+        for tab in tabs {
+            if let inst = tab.instances.first(where: { $0.id == id }) {
+                return (inst, tab)
+            }
+        }
+        return nil
+    }
+
     // MARK: - Connections
     func startConnecting(fromId: UUID, fromPortIndex: Int) {
         connectingFromId = fromId
@@ -218,20 +235,39 @@ class AppState: ObservableObject {
             connectingFromId = nil
             return
         }
-        let fromComp = Components.all[activeTab.instances.first(where: { $0.id == fromId })?.type ?? ""]
-        let toComp = Components.all[activeTab.instances.first(where: { $0.id == toId })?.type ?? ""]
+        guard let (fromInst, fromTab) = findInstance(id: fromId),
+              let (toInst, toTab) = findInstance(id: toId) else {
+            connectingFromId = nil
+            return
+        }
+        let fromComp = Components.all[fromInst.type]
+        let toComp = Components.all[toInst.type]
         if fromComp?.comingSoon == true || toComp?.comingSoon == true {
             connectingFromId = nil
             return
         }
-        let exists = activeTab.connections.contains {
-            $0.fromId == fromId && $0.fromPortIndex == connectingFromPortIndex &&
-            $0.toId == toId && $0.toPortIndex == toPortIndex
-        }
-        if !exists {
-            activeTab.connections.append(NodeConnection(
-                fromId: fromId, fromPortIndex: connectingFromPortIndex,
-                toId: toId, toPortIndex: toPortIndex))
+        if fromTab.id == toTab.id {
+            // Same-tab connection
+            let exists = fromTab.connections.contains {
+                $0.fromId == fromId && $0.fromPortIndex == connectingFromPortIndex &&
+                $0.toId == toId && $0.toPortIndex == toPortIndex
+            }
+            if !exists {
+                fromTab.connections.append(NodeConnection(
+                    fromId: fromId, fromPortIndex: connectingFromPortIndex,
+                    toId: toId, toPortIndex: toPortIndex))
+            }
+        } else {
+            // Cross-tab connection
+            let exists = crossTabConnections.contains {
+                $0.fromId == fromId && $0.fromPortIndex == connectingFromPortIndex &&
+                $0.toId == toId && $0.toPortIndex == toPortIndex
+            }
+            if !exists {
+                crossTabConnections.append(NodeConnection(
+                    fromId: fromId, fromPortIndex: connectingFromPortIndex,
+                    toId: toId, toPortIndex: toPortIndex))
+            }
         }
         connectingFromId = nil
     }
@@ -240,10 +276,14 @@ class AppState: ObservableObject {
 
     func removeConnection(_ id: UUID) {
         activeTab.connections.removeAll { $0.id == id }
+        crossTabConnections.removeAll { $0.id == id }
     }
 
     func disconnectInput(instanceId: UUID, portIndex: Int) {
         activeTab.connections.removeAll {
+            $0.toId == instanceId && $0.toPortIndex == portIndex
+        }
+        crossTabConnections.removeAll {
             $0.toId == instanceId && $0.toPortIndex == portIndex
         }
     }

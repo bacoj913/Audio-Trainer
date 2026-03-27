@@ -73,6 +73,10 @@ struct CanvasView: View {
                         ConnectionHitArea(connection: conn)
                     }
 
+                    ForEach(appState.crossTabConnections) { conn in
+                        ConnectionHitArea(connection: conn)
+                    }
+
                     ForEach(appState.instances) { instance in
                         PositionedNodeView(instance: instance)
                             .zIndex(1)
@@ -151,27 +155,35 @@ struct CanvasView: View {
 
     // MARK: - Draw connections
     private func drawConnections(ctx: GraphicsContext) {
+        // Draw same-tab connections
         for conn in appState.connections {
             guard let src = appState.portCenter(for: conn.fromId, portIndex: conn.fromPortIndex, side: "out"),
                   let dst = appState.portCenter(for: conn.toId,   portIndex: conn.toPortIndex,   side: "in")
             else { continue }
-
-            // Determine wire color from the output port's signal type
             let wireColor = connectionColor(for: conn)
-
-            var path = Path()
-            path.move(to: src)
-            let cx = (dst.x - src.x) * 0.6
-            path.addCurve(to: dst,
-                          control1: CGPoint(x: src.x + cx, y: src.y),
-                          control2: CGPoint(x: dst.x - cx, y: dst.y))
-
-            ctx.stroke(path,
-                       with: .color(wireColor.opacity(0.75)),
-                       style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-
-            drawArrowhead(ctx: ctx, at: dst, from: src, color: wireColor.opacity(0.75))
+            drawWire(ctx: ctx, from: src, to: dst, color: wireColor)
         }
+        // Draw cross-tab connections where both ports are visible on this canvas
+        for conn in appState.crossTabConnections {
+            guard let src = appState.portCenter(for: conn.fromId, portIndex: conn.fromPortIndex, side: "out"),
+                  let dst = appState.portCenter(for: conn.toId,   portIndex: conn.toPortIndex,   side: "in")
+            else { continue }
+            let wireColor = crossTabConnectionColor(for: conn)
+            drawWire(ctx: ctx, from: src, to: dst, color: wireColor)
+        }
+    }
+
+    private func drawWire(ctx: GraphicsContext, from src: CGPoint, to dst: CGPoint, color: Color) {
+        var path = Path()
+        path.move(to: src)
+        let cx = (dst.x - src.x) * 0.6
+        path.addCurve(to: dst,
+                      control1: CGPoint(x: src.x + cx, y: src.y),
+                      control2: CGPoint(x: dst.x - cx, y: dst.y))
+        ctx.stroke(path,
+                   with: .color(color.opacity(0.75)),
+                   style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+        drawArrowhead(ctx: ctx, at: dst, from: src, color: color.opacity(0.75))
     }
 
     private func connectionColor(for conn: NodeConnection) -> Color {
@@ -184,9 +196,21 @@ struct CanvasView: View {
         return Color.signalTypeColor(sigType)
     }
 
+    private func crossTabConnectionColor(for conn: NodeConnection) -> Color {
+        guard let (fromInst, _) = appState.findInstance(id: conn.fromId) else { return Color.signalTypeColor("line") }
+        let fromComp = Components.all[fromInst.type]
+        let outputs = fromInst.effectiveOutputTypes ?? fromComp?.outputs ?? []
+        let sigType = outputs.indices.contains(conn.fromPortIndex)
+            ? outputs[conn.fromPortIndex]
+            : outputs.first ?? "line"
+        return Color.signalTypeColor(sigType)
+    }
+
     private func activeOutputSignalType() -> Color {
         guard let fromId = appState.connectingFromId else { return Color.blue.opacity(0.45) }
+        // Search both active tab and all tabs (for cross-rack source ports)
         let fromInst = appState.instances.first { $0.id == fromId }
+            ?? appState.findInstance(id: fromId)?.0
         let fromComp = Components.all[fromInst?.type ?? ""]
         let outputs = fromInst?.effectiveOutputTypes ?? fromComp?.outputs ?? []
         let sigType = outputs.indices.contains(appState.connectingFromPortIndex)
