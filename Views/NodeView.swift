@@ -710,6 +710,8 @@ struct RackNodeView: View {
     @State private var dragStartPos: CGPoint?
     /// Measured height of the top bar + header HStack, used to position cross-rack port dots.
     @State private var headerHeight: CGFloat = 31
+    @State private var showingSaveSheet = false
+    @State private var saveRackName = ""
 
     private static let topBarH: CGFloat = 3
     private static let unitH: CGFloat = 20   // NodeView.rackUnitHeight
@@ -796,6 +798,19 @@ struct RackNodeView: View {
                 .padding(.trailing, 2)
 
                 Button {
+                    saveRackName = comp.name
+                    showingSaveSheet = true
+                } label: {
+                    Image(systemName: "star")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .opacity(isHovered ? 1 : 0)
+                .padding(.trailing, 2)
+                .help("Save to My Equipment")
+
+                Button {
                     appState.deleteNode(id: instance.id)
                 } label: {
                     Image(systemName: "xmark")
@@ -853,6 +868,16 @@ struct RackNodeView: View {
         )
         .onPreferenceChange(RackHeaderHeightKey.self) { h in
             headerHeight = h
+        }
+        .sheet(isPresented: $showingSaveSheet) {
+            SaveRackSheet(
+                rackName: $saveRackName,
+                onSave: { name in
+                    appState.saveRackToMyEquipment(instanceId: instance.id, name: name)
+                    showingSaveSheet = false
+                },
+                onCancel: { showingSaveSheet = false }
+            )
         }
         // Cross-rack port dots — rendered AFTER clipShape so they extend outside card edges
         .overlay {
@@ -949,6 +974,35 @@ struct RackNodeView: View {
         .background(i.isMultiple(of: 2) ? Color.primary.opacity(0.03) : Color.clear)
     }
 }
+// MARK: - Save Rack Sheet
+struct SaveRackSheet: View {
+    @Binding var rackName: String
+    let onSave: (String) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Save to My Equipment")
+                .font(.system(size: 14, weight: .semibold))
+
+            TextField("Rack name", text: $rackName)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 260)
+
+            HStack {
+                Spacer()
+                Button("Cancel", action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") { onSave(rackName) }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(rackName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 320)
+    }
+}
+
 // MARK: - SF Symbol icon wrapper
 struct ComponentIcon: View {
     let name: String

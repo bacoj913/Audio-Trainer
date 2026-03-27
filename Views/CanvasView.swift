@@ -115,27 +115,33 @@ struct CanvasView: View {
             .onDrop(of: [UTType.plainText], isTargeted: $isDragTarget) { providers, location in
                 providers.first?.loadItem(forTypeIdentifier: UTType.plainText.identifier) { data, _ in
                     guard let data = data as? Data,
-                          let typeId = String(data: data, encoding: .utf8) else { return }
+                          let payload = String(data: data, encoding: .utf8) else { return }
 
                     DispatchQueue.main.async {
                         let canvasX = (location.x - appState.canvasOffset.width) / appState.canvasScale
                         let canvasY = (location.y - appState.canvasOffset.height) / appState.canvasScale
-                        let comp = Components.all[typeId]
-                        let droppedHalfHeight: CGFloat = {
-                            if let comp, comp.isRack {
-                                return 30
-                            }
-                            if let comp {
-                                return standardNodeHeight(for: comp) / 2
-                            }
-                            return 30
-                        }()
 
-                        let pos = CGPoint(
-                            x: max(10, canvasX - NodeView.width / 2),
-                            y: max(10, canvasY - droppedHalfHeight)
-                        )
-                        appState.addInstance(type: typeId, position: pos)
+                        if payload.hasPrefix("userrack:") {
+                            // Drop of a user-saved rack template
+                            let rackIdStr = String(payload.dropFirst("userrack:".count))
+                            guard let rackId = UUID(uuidString: rackIdStr),
+                                  let userRack = appState.userRacks.first(where: { $0.id == rackId })
+                            else { return }
+                            let pos = CGPoint(x: max(10, canvasX - NodeView.rackWidth / 2),
+                                             y: max(10, canvasY - 30))
+                            appState.placeUserRack(userRack, at: pos)
+                        } else {
+                            // Drop of a standard component
+                            let comp = Components.all[payload]
+                            let droppedHalfHeight: CGFloat = {
+                                if let comp, comp.isRack { return 30 }
+                                if let comp { return standardNodeHeight(for: comp) / 2 }
+                                return 30
+                            }()
+                            let pos = CGPoint(x: max(10, canvasX - NodeView.width / 2),
+                                             y: max(10, canvasY - droppedHalfHeight))
+                            appState.addInstance(type: payload, position: pos)
+                        }
                     }
                 }
                 return true

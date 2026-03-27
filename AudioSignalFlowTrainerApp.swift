@@ -17,7 +17,38 @@ struct AudioSignalFlowTrainerApp: App {
         .windowResizability(.contentSize)
         .defaultSize(width: 1200, height: 780)
         .commands {
-            CommandGroup(replacing: .newItem) {}
+            // MARK: File menu
+            CommandGroup(replacing: .newItem) {
+                Button("New") {
+                    AppState.shared?.newProject()
+                }
+                .keyboardShortcut("n", modifiers: .command)
+
+                Button("Open…") {
+                    AppState.shared?.openProject()
+                }
+                .keyboardShortcut("o", modifiers: .command)
+
+                Divider()
+
+                Button("Save") {
+                    AppState.shared?.saveProject()
+                }
+                .keyboardShortcut("s", modifiers: .command)
+
+                Button("Save As…") {
+                    AppState.shared?.saveProjectAs()
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+            }
+
+            // MARK: Edit menu additions
+            CommandGroup(after: .pasteboard) {
+                Divider()
+                Button("Clear Canvas") {
+                    AppState.shared?.newProject()
+                }
+            }
         }
     }
 }

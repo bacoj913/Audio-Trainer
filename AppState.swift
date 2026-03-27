@@ -2,6 +2,8 @@
 
 import SwiftUI
 import Combine
+import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - App Mode
 enum AppMode { case free, exercise, rf }
@@ -16,13 +18,14 @@ struct IOConfig: Equatable {
 
 // MARK: - Node Instance
 class NodeInstance: ObservableObject, Identifiable {
-    let id = UUID()
+    let id: UUID
     let type: String
     @Published var position: CGPoint
     var rackSlot: Int? = nil   // U-slot index within a rack tab (nil if on main canvas)
     @Published var ioConfig: IOConfig? = nil   // non-nil for configurable I/O components
 
-    init(type: String, position: CGPoint) {
+    init(id: UUID = UUID(), type: String, position: CGPoint) {
+        self.id = id
         self.type = type
         self.position = position
     }
@@ -48,7 +51,7 @@ class NodeInstance: ObservableObject, Identifiable {
 
 // MARK: - Canvas Tab
 class CanvasTab: ObservableObject, Identifiable {
-    let id = UUID()
+    let id: UUID
     var name: String
     var parentRackInstanceId: UUID?   // nil = main canvas
 
@@ -56,7 +59,8 @@ class CanvasTab: ObservableObject, Identifiable {
     @Published var connections: [NodeConnection] = []
     @Published var portPositions: [String: CGPoint] = [:]
 
-    init(name: String, parentRackInstanceId: UUID? = nil) {
+    init(id: UUID = UUID(), name: String, parentRackInstanceId: UUID? = nil) {
+        self.id = id
         self.name = name
         self.parentRackInstanceId = parentRackInstanceId
     }
@@ -64,11 +68,19 @@ class CanvasTab: ObservableObject, Identifiable {
 
 // MARK: - Connection
 struct NodeConnection: Identifiable, Equatable {
-    let id = UUID()
+    let id: UUID
     let fromId: UUID
     let fromPortIndex: Int   // index into comp.ports.outputs
     let toId: UUID
     let toPortIndex: Int     // index into comp.ports.inputs
+
+    init(id: UUID = UUID(), fromId: UUID, fromPortIndex: Int, toId: UUID, toPortIndex: Int) {
+        self.id = id
+        self.fromId = fromId
+        self.fromPortIndex = fromPortIndex
+        self.toId = toId
+        self.toPortIndex = toPortIndex
+    }
 }
 
 // MARK: - RF State
@@ -87,6 +99,9 @@ struct RFGearItem: Identifiable {
 
 // MARK: - App State
 class AppState: ObservableObject {
+    /// Shared singleton — used by menu Commands which cannot access @EnvironmentObject.
+    static weak var shared: AppState?
+
     @Published var mode: AppMode = .free
     @Published var connectingFromId: UUID? = nil
     @Published var connectingFromPortIndex: Int = 0
@@ -101,6 +116,11 @@ class AppState: ObservableObject {
     @Published var canvasOffset: CGSize = .zero
     @Published var crossTabConnections: [NodeConnection] = []
 
+    /// User-saved rack templates shown in the "My Equipment" sidebar category.
+    @Published var userRacks: [UserRack] = []
+    /// URL of the currently open project file (nil = unsaved).
+    var currentProjectURL: URL? = nil
+
     // MARK: - Tab system
     @Published var tabs: [CanvasTab] = [CanvasTab(name: "Main")]
     @Published var activeTabIndex: Int = 0
@@ -110,7 +130,12 @@ class AppState: ObservableObject {
     /// Forwards active tab's objectWillChange → AppState so views re-render on tab data changes.
     private var activeTabObserver: AnyCancellable?
 
-    init() { observeActiveTab() }
+    init() {
+        AppState.shared = self
+        observeActiveTab()
+        loadCustomExercisesFromStorage()
+        loadUserRacksFromStorage()
+    }
 
     private func observeActiveTab() {
         guard activeTabIndex < tabs.count else { return }
@@ -400,6 +425,210 @@ class AppState: ObservableObject {
     // MARK: - Dark Mode
     func toggleDarkMode() {
         isDarkMode.toggle()
+    }
+
+    // MARK: - Project Save/Load
+
+    /// Convert the full canvas state into a Codable project snapshot.
+    func makeProject() -> SavedProject {
+        let savedTabs = tabs.map { tab -> SavedTab in
+            SavedTab(
+                id: tab.id,
+                name: tab.name,
+                parentRackInstanceId: tab.parentRackInstanceId,
+                instances: tab.instances.map { inst in
+                    SavedInstance(
+                        id: inst.id,
+                        type: inst.type,
+                        positionX: Double(inst.position.x),
+                        positionY: Double(inst.position.y),
+                        rackSlot: inst.rackSlot,
+                        ioConfig: inst.ioConfig.map {
+                            SavedIOConfig(inputCount: $0.inputCount,
+                                          inputSignalType: $0.inputSignalType,
+                                          outputCount: $0.outputCount,
+                                          outputSignalType: $0.outputSignalType)
+                        }
+                    )
+                },
+                connections: tab.connections.map {
+                    SavedConnection(id: $0.id, fromId: $0.fromId, fromPortIndex: $0.fromPortIndex,
+                                   toId: $0.toId, toPortIndex: $0.toPortIndex)
+                }
+            )
+        }
+        let savedCross = crossTabConnections.map {
+            SavedConnection(id: $0.id, fromId: $0.fromId, fromPortIndex: $0.fromPortIndex,
+                           toId: $0.toId, toPortIndex: $0.toPortIndex)
+        }
+        return SavedProject(tabs: savedTabs, crossTabConnections: savedCross)
+    }
+
+    /// Replace the entire canvas state with a loaded project snapshot.
+    func loadProject(_ project: SavedProject) {
+        connectingFromId = nil
+        var newTabs: [CanvasTab] = []
+        for savedTab in project.tabs {
+            let tab = CanvasTab(id: savedTab.id, name: savedTab.name,
+                                parentRackInstanceId: savedTab.parentRackInstanceId)
+            for si in savedTab.instances {
+                let inst = NodeInstance(id: si.id, type: si.type,
+                                        position: CGPoint(x: si.positionX, y: si.positionY))
+                inst.rackSlot = si.rackSlot
+                if let cfg = si.ioConfig {
+                    inst.ioConfig = IOConfig(inputCount: cfg.inputCount,
+                                             inputSignalType: cfg.inputSignalType,
+                                             outputCount: cfg.outputCount,
+                                             outputSignalType: cfg.outputSignalType)
+                }
+                tab.instances.append(inst)
+            }
+            for sc in savedTab.connections {
+                tab.connections.append(NodeConnection(id: sc.id, fromId: sc.fromId,
+                                                      fromPortIndex: sc.fromPortIndex,
+                                                      toId: sc.toId, toPortIndex: sc.toPortIndex))
+            }
+            newTabs.append(tab)
+        }
+        if newTabs.isEmpty { newTabs.append(CanvasTab(name: "Main")) }
+        tabs = newTabs
+        activeTabIndex = 0
+        observeActiveTab()
+        crossTabConnections = project.crossTabConnections.map {
+            NodeConnection(id: $0.id, fromId: $0.fromId, fromPortIndex: $0.fromPortIndex,
+                           toId: $0.toId, toPortIndex: $0.toPortIndex)
+        }
+        canvasScale = 1.0
+        canvasOffset = .zero
+    }
+
+    func newProject() {
+        currentProjectURL = nil
+        connectingFromId = nil
+        crossTabConnections = []
+        tabs = [CanvasTab(name: "Main")]
+        activeTabIndex = 0
+        observeActiveTab()
+        canvasScale = 1.0
+        canvasOffset = .zero
+    }
+
+    func openProject() {
+        let panel = NSOpenPanel()
+        panel.title = "Open Project"
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.begin { response in
+            guard response == .OK, let url = panel.url,
+                  let data = try? Data(contentsOf: url),
+                  let project = try? JSONDecoder().decode(SavedProject.self, from: data) else { return }
+            DispatchQueue.main.async {
+                self.loadProject(project)
+                self.currentProjectURL = url
+            }
+        }
+    }
+
+    func saveProject() {
+        if let url = currentProjectURL {
+            writeProject(to: url)
+        } else {
+            saveProjectAs()
+        }
+    }
+
+    func saveProjectAs() {
+        let panel = NSSavePanel()
+        panel.title = "Save Project"
+        panel.nameFieldStringValue = "signal-flow-project.json"
+        panel.allowedContentTypes = [.json]
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            DispatchQueue.main.async {
+                self.currentProjectURL = url
+                self.writeProject(to: url)
+            }
+        }
+    }
+
+    private func writeProject(to url: URL) {
+        guard let data = try? JSONEncoder().encode(makeProject()) else { return }
+        try? data.write(to: url)
+    }
+
+    // MARK: - User Racks ("My Equipment")
+
+    /// Snapshot the current rack tab for `instanceId` and save it as a named user rack.
+    func saveRackToMyEquipment(instanceId: UUID, name: String) {
+        guard let rackTab = tabs.first(where: { $0.parentRackInstanceId == instanceId }),
+              let inst = findInstance(id: instanceId)?.0 else { return }
+        let rack = UserRack(
+            name: name,
+            rackType: inst.type,
+            instances: rackTab.instances.map { ri in
+                SavedInstance(id: UUID(), type: ri.type,
+                              positionX: Double(ri.position.x), positionY: Double(ri.position.y),
+                              rackSlot: ri.rackSlot, ioConfig: ri.ioConfig.map {
+                                  SavedIOConfig(inputCount: $0.inputCount, inputSignalType: $0.inputSignalType,
+                                                outputCount: $0.outputCount, outputSignalType: $0.outputSignalType)
+                              })
+            },
+            connections: rackTab.connections.map {
+                SavedConnection(id: UUID(), fromId: $0.fromId, fromPortIndex: $0.fromPortIndex,
+                               toId: $0.toId, toPortIndex: $0.toPortIndex)
+            }
+        )
+        userRacks.append(rack)
+        persistUserRacks()
+    }
+
+    /// Place a user rack template on the current tab at the given position,
+    /// creating and populating its inner rack tab automatically.
+    @discardableResult
+    func placeUserRack(_ userRack: UserRack, at position: CGPoint) -> NodeInstance {
+        let rackInst = addInstance(type: userRack.rackType, position: position)
+        // Create the rack tab
+        guard let rackComp = Components.all[userRack.rackType] else { return rackInst }
+        let rackTab = CanvasTab(name: rackComp.name, parentRackInstanceId: rackInst.id)
+        // Build an ID-remapping table so connections reference the new instances
+        var idMap: [UUID: UUID] = [:]
+        for si in userRack.instances {
+            let newId = UUID()
+            idMap[si.id] = newId
+            let inst = NodeInstance(id: newId, type: si.type,
+                                    position: CGPoint(x: si.positionX, y: si.positionY))
+            inst.rackSlot = si.rackSlot
+            if let cfg = si.ioConfig {
+                inst.ioConfig = IOConfig(inputCount: cfg.inputCount, inputSignalType: cfg.inputSignalType,
+                                         outputCount: cfg.outputCount, outputSignalType: cfg.outputSignalType)
+            }
+            rackTab.instances.append(inst)
+        }
+        for sc in userRack.connections {
+            let newFrom = idMap[sc.fromId] ?? sc.fromId
+            let newTo   = idMap[sc.toId]   ?? sc.toId
+            rackTab.connections.append(NodeConnection(fromId: newFrom, fromPortIndex: sc.fromPortIndex,
+                                                       toId: newTo, toPortIndex: sc.toPortIndex))
+        }
+        tabs.append(rackTab)
+        return rackInst
+    }
+
+    func deleteUserRack(id: UUID) {
+        userRacks.removeAll { $0.id == id }
+        persistUserRacks()
+    }
+
+    func persistUserRacks() {
+        if let data = try? JSONEncoder().encode(userRacks) {
+            UserDefaults.standard.set(data, forKey: "userRacks")
+        }
+    }
+
+    func loadUserRacksFromStorage() {
+        guard let data = UserDefaults.standard.data(forKey: "userRacks"),
+              let loaded = try? JSONDecoder().decode([UserRack].self, from: data) else { return }
+        userRacks = loaded
     }
 }
 
