@@ -52,6 +52,9 @@ struct FreePanelView: View {
                 }
             }
 
+            // Signal Rules reference
+            SignalRulesSection()
+
             // Quick Starts
             InspectorSection(title: "QUICK STARTS") {
                 VStack(spacing: 6) {
@@ -126,6 +129,75 @@ struct QuickStartButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - Signal Rules Section
+struct SignalRulesSection: View {
+    @State private var selectedDomain: RuleDomain = .aes
+
+    var body: some View {
+        InspectorSection(title: "SIGNAL RULES") {
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("", selection: $selectedDomain) {
+                    ForEach(RuleDomain.allCases) { domain in
+                        Text(domain.displayName).tag(domain)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+
+                VStack(spacing: 4) {
+                    ForEach(SignalRules.all[selectedDomain.rawValue] ?? []) { rule in
+                        SignalRuleRow(rule: rule, domainColor: selectedDomain.color)
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct SignalRuleRow: View {
+    let rule: SignalRule
+    let domainColor: Color
+    @State private var isExpanded = false
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(rule.detail)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 2)
+
+                if !rule.references.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(rule.references, id: \.self) { ref in
+                            Text("↳ \(ref)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(domainColor.opacity(0.8))
+                        }
+                    }
+                }
+            }
+            .padding(.leading, 4)
+            .padding(.bottom, 4)
+        } label: {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(domainColor)
+                    .frame(width: 6, height: 6)
+                Text(rule.title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.primary)
+            }
+        }
+        .disclosureGroupStyle(.automatic)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(Color.primary.opacity(0.03))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 

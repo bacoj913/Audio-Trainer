@@ -261,6 +261,22 @@ enum Components {
             level: "Line Level",
             rackUnits: 1),
 
+        Component(id: "configurable_io_2u",
+            name: "Configurable I/O",
+                iconName: "interface",
+            category: "Patching",
+                manufacturer: "Generic",
+                model: "2U Configurable I/O",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 8, signalType: "line")
+            ],
+            outputGroups: [
+                PortGroup(connector: "XLR", count: 8, signalType: "line")
+            ],
+            desc: "2U configurable I/O — tap gear icon to change port count and signal type",
+            level: "Line Level",
+            rackUnits: 2),
+
         // ── Recording ────────────────────────────────────────
         Component(id: "audio_interface",
             name: "Universal Audio Apollo x8p",

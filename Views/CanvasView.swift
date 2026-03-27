@@ -177,7 +177,7 @@ struct CanvasView: View {
     private func connectionColor(for conn: NodeConnection) -> Color {
         let fromInst = appState.instances.first { $0.id == conn.fromId }
         let fromComp = Components.all[fromInst?.type ?? ""]
-        let outputs = fromComp?.outputs ?? []
+        let outputs = fromInst?.effectiveOutputTypes ?? fromComp?.outputs ?? []
         let sigType = outputs.indices.contains(conn.fromPortIndex)
             ? outputs[conn.fromPortIndex]
             : outputs.first ?? "line"
@@ -188,7 +188,7 @@ struct CanvasView: View {
         guard let fromId = appState.connectingFromId else { return Color.blue.opacity(0.45) }
         let fromInst = appState.instances.first { $0.id == fromId }
         let fromComp = Components.all[fromInst?.type ?? ""]
-        let outputs = fromComp?.outputs ?? []
+        let outputs = fromInst?.effectiveOutputTypes ?? fromComp?.outputs ?? []
         let sigType = outputs.indices.contains(appState.connectingFromPortIndex)
             ? outputs[appState.connectingFromPortIndex]
             : outputs.first ?? "line"

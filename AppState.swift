@@ -6,16 +6,43 @@ import Combine
 // MARK: - App Mode
 enum AppMode { case free, exercise, rf }
 
+// MARK: - Configurable I/O
+struct IOConfig: Equatable {
+    var inputCount: Int = 8
+    var inputSignalType: String = "line"
+    var outputCount: Int = 8
+    var outputSignalType: String = "line"
+}
+
 // MARK: - Node Instance
 class NodeInstance: ObservableObject, Identifiable {
     let id = UUID()
     let type: String
     @Published var position: CGPoint
     var rackSlot: Int? = nil   // U-slot index within a rack tab (nil if on main canvas)
+    @Published var ioConfig: IOConfig? = nil   // non-nil for configurable I/O components
 
     init(type: String, position: CGPoint) {
         self.type = type
         self.position = position
+    }
+
+    // MARK: - Effective port helpers (override component defaults when ioConfig is set)
+    var effectivePorts: PortInfo? {
+        guard let cfg = ioConfig else { return nil }
+        let inLabels  = (1...max(1, cfg.inputCount)).map  { "\(cfg.inputSignalType.capitalized) In \($0)" }
+        let outLabels = (1...max(1, cfg.outputCount)).map { "\(cfg.outputSignalType.capitalized) Out \($0)" }
+        return PortInfo(inputs: inLabels, outputs: outLabels)
+    }
+
+    var effectiveInputTypes: [String]? {
+        guard let cfg = ioConfig else { return nil }
+        return Array(repeating: cfg.inputSignalType, count: cfg.inputCount)
+    }
+
+    var effectiveOutputTypes: [String]? {
+        guard let cfg = ioConfig else { return nil }
+        return Array(repeating: cfg.outputSignalType, count: cfg.outputCount)
     }
 }
 
@@ -218,6 +245,14 @@ class AppState: ObservableObject {
     func disconnectInput(instanceId: UUID, portIndex: Int) {
         activeTab.connections.removeAll {
             $0.toId == instanceId && $0.toPortIndex == portIndex
+        }
+    }
+
+    /// Remove connections that reference ports outside the new count bounds (called after I/O reconfigure).
+    func clampConnections(for id: UUID, inputCount: Int, outputCount: Int) {
+        activeTab.connections.removeAll {
+            ($0.toId   == id && $0.toPortIndex   >= inputCount) ||
+            ($0.fromId == id && $0.fromPortIndex >= outputCount)
         }
     }
 
