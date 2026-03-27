@@ -112,11 +112,11 @@ extension NodeView {
     static let portLabelGap: CGFloat = 12
     
     static let standardTopReserved: CGFloat = 96
-    static let standardBodyTopInset: CGFloat = 16
+    static let standardBodyTopInset: CGFloat = 24
     static let standardBodyBottomInset: CGFloat = 12
     static let standardBottomPadding: CGFloat = 10
     static let standardMinBodyHeight: CGFloat = 24
-    static let standardPortSpacing: CGFloat = 26
+    static let standardPortSpacing: CGFloat = 22
     
     static let rackWidth: CGFloat = 200
     static let rackHeaderHeight: CGFloat = 28
@@ -316,13 +316,14 @@ struct StandardNodeView: View {
         // MARK: - Per-port interactive dots on card edges
         .overlay {
             GeometryReader { geo in
+                let effectivePorts = instance.effectivePorts ?? comp.ports
                 let inputPorts = makeVisualPorts(
-                    labels: comp.ports.inputs,
-                    signalTypes: comp.inputs
+                    labels: effectivePorts.inputs,
+                    signalTypes: instance.effectiveInputTypes ?? comp.inputs
                 )
                 let outputPorts = makeVisualPorts(
-                    labels: comp.ports.outputs,
-                    signalTypes: comp.outputs
+                    labels: effectivePorts.outputs,
+                    signalTypes: instance.effectiveOutputTypes ?? comp.outputs
                 )
                 
                 let rowCount = max(inputPorts.count, outputPorts.count)
@@ -701,25 +702,6 @@ struct RackNodeView: View {
     @State private var isHovered = false
     @State private var dragStartPos: CGPoint?
     
-    private var rackTab: CanvasTab? {
-        appState.tabs.first(where: { $0.parentRackInstanceId == instance.id })
-    }
-    
-    private var rackItems: [NodeInstance] {
-        rackTab?.instances ?? []
-    }
-    
-    private var usedRackUnits: Int {
-        rackItems.reduce(0) { sum, item in
-            let units = Components.all[item.type]?.rackUnits ?? 1
-            return sum + max(units, 1)
-        }
-    }
-    
-    private var totalRackUnits: Int {
-        max(comp.rackUnits * 2, 1)
-    }
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Rectangle()
@@ -794,39 +776,6 @@ struct RackNodeView: View {
                         Divider().opacity(0.3)
                     }
                 }
-            }
-            
-            if !rackItems.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text("\(rackItems.count) item\(rackItems.count == 1 ? "" : "s")")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                        
-                        Text("\(usedRackUnits)U / \(totalRackUnits)U")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    GeometryReader { geo in
-                        let fill = min(CGFloat(usedRackUnits) / CGFloat(totalRackUnits), 1)
-                        
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Color.primary.opacity(0.08))
-                            
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Color.categoryColor(comp.category).opacity(0.55))
-                                .frame(width: geo.size.width * fill)
-                        }
-                    }
-                    .frame(height: 6)
-                }
-                .padding(.horizontal, 9)
-                .padding(.top, 6)
-                .padding(.bottom, 8)
             }
         }
         .frame(width: NodeView.rackWidth)
