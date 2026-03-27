@@ -117,7 +117,11 @@ enum Components {
             ],
             desc: "Loudspeaker processor & EQ",
             level: "Line Level",
-            rackUnits: 1),
+            rackUnits: 1,
+            availablePresets: [
+                "PA Top Module", "PA Sub Module", "Fill Module", "Delay Module",
+                "Front Fill Module", "Side Fill Module", "Monitor Module", "Drum Fill Module"
+            ]),
 
         Component(id: "compressor",
             name: "SSL G-Bus Compressor",
@@ -317,7 +321,11 @@ enum Components {
             ],
             desc: "20,000W 4-ch amplifier, Dante/AES",
             level: "Speaker Level",
-            rackUnits: 2),
+            rackUnits: 2,
+            availablePresets: [
+                "PA Top Module", "PA Sub Module", "Fill Module", "Delay Module",
+                "Front Fill Module", "Side Fill Module", "Monitor Module", "Drum Fill Module"
+            ]),
 
         Component(id: "power_amp_powersoft",
             name: "Powersoft X8",

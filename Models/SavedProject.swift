@@ -30,6 +30,9 @@ struct SavedInstance: Codable {
     var positionY: Double
     var rackSlot: Int?
     var ioConfig: SavedIOConfig?
+    var ipAddress: String?
+    var portVlanTags: [Int: Int]?
+    var selectedPreset: String?
 }
 
 // MARK: - Configurable I/O override

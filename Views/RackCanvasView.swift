@@ -192,7 +192,7 @@ struct RackCanvasView: View {
         return nil
     }
 
-    private var totalUnits: Int { max(rackComp?.rackUnits ?? 16, 4) * 2 }
+    private var totalUnits: Int { max(rackComp?.rackUnits ?? 16, 4) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -304,7 +304,7 @@ struct RackCanvasView: View {
                 .font(.system(size: 12, weight: .semibold))
 // FIXME: Rack Units internally are doubled from actual
             if let comp = rackComp {
-                Text("· \(comp.rackUnits * 2)U capacity")
+                Text("· \(comp.rackUnits)U capacity")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -453,10 +453,17 @@ struct RackCanvasFacePort: View {
     var signalType: String = "line"
     var bundleStyle: PortGroup.BundleStyle = .single
     var compactFor1U: Bool = false
+    var isNetworkSwitch: Bool = false
 
     @EnvironmentObject var appState: AppState
+    @State private var showingVlanPicker = false
 
-    private var color: Color { Color.signalTypeColor(signalType) }
+    private var vlanId: Int { instance.portVlanTags[portIndex] ?? 0 }
+    private var vlanColor: Color { Color.vlanColor(vlanId) }
+
+    private var color: Color {
+        isNetworkSwitch && vlanId > 0 ? vlanColor : Color.signalTypeColor(signalType)
+    }
 
     private var isSource: Bool {
         appState.connectingFromId == instance.id
@@ -522,6 +529,14 @@ struct RackCanvasFacePort: View {
                     showDisconnectMark: isConnected && side == "in" && !isConnecting
                 )
                 .scaleEffect(glyphScale)
+
+                // VLAN badge for network switch ports
+                if isNetworkSwitch && vlanId > 0 {
+                    Text("\(vlanId)")
+                        .font(.system(size: 5, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .allowsHitTesting(false)
+                }
             }
         }
         .frame(width: labelWidth, height: totalHeight, alignment: .top)
@@ -540,7 +555,15 @@ struct RackCanvasFacePort: View {
                 )
             }
         )
+        .popover(isPresented: $showingVlanPicker, arrowEdge: .bottom) {
+            VlanPickerPopover(instance: instance, portIndex: portIndex, label: label)
+                .environmentObject(appState)
+        }
         .onTapGesture {
+            if isNetworkSwitch {
+                showingVlanPicker = true
+                return
+            }
             if side == "out" {
                 if !isConnecting {
                     appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
@@ -555,6 +578,76 @@ struct RackCanvasFacePort: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - VLAN Picker Popover
+struct VlanPickerPopover: View {
+    @ObservedObject var instance: NodeInstance
+    let portIndex: Int
+    let label: String
+
+    @State private var vlanInput: String = ""
+    @Environment(\.dismiss) private var dismiss
+
+    private var currentVlan: Int { instance.portVlanTags[portIndex] ?? 0 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(label.isEmpty ? "Port \(portIndex + 1)" : label)
+                .font(.system(size: 13, weight: .semibold))
+
+            HStack(spacing: 8) {
+                // Color swatch
+                Circle()
+                    .fill(Color.vlanColor(currentVlan))
+                    .frame(width: 14, height: 14)
+                    .overlay(Circle().stroke(Color.primary.opacity(0.2), lineWidth: 0.5))
+
+                Text(currentVlan == 0 ? "Untagged" : "VLAN \(currentVlan)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            HStack(spacing: 6) {
+                TextField("VLAN ID", text: $vlanInput)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 90)
+                    .onSubmit { applyVlan() }
+
+                Text("(1–4094, 0=untagged)")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+
+            HStack {
+                Button("Clear") {
+                    instance.portVlanTags.removeValue(forKey: portIndex)
+                    dismiss()
+                }
+                .foregroundColor(.red)
+                Spacer()
+                Button("Apply") { applyVlan() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+        }
+        .padding(12)
+        .frame(width: 240)
+        .onAppear {
+            vlanInput = currentVlan > 0 ? "\(currentVlan)" : ""
+        }
+    }
+
+    private func applyVlan() {
+        if let id = Int(vlanInput.trimmingCharacters(in: .whitespaces)), id >= 0, id <= 4094 {
+            if id == 0 {
+                instance.portVlanTags.removeValue(forKey: portIndex)
+            } else {
+                instance.portVlanTags[portIndex] = id
+            }
+        }
+        dismiss()
     }
 }
 
@@ -681,6 +774,38 @@ struct RackGearItem: View {
                                 }
                             }
 
+                            if !comp.availablePresets.isEmpty {
+                                Menu {
+                                    Button("None") { instance.selectedPreset = nil }
+                                    Divider()
+                                    ForEach(comp.availablePresets, id: \.self) { preset in
+                                        Button(preset) { instance.selectedPreset = preset }
+                                    }
+                                } label: {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "list.bullet")
+                                            .font(.system(size: 8))
+                                        Text(instance.selectedPreset ?? "Module")
+                                            .font(.system(size: isCompact1UNetwork ? 7 : 8, weight: .medium))
+                                            .lineLimit(1)
+                                    }
+                                    .foregroundColor(
+                                        Color.categoryColor(comp.category)
+                                            .wcagContrastingTextColor
+                                            .opacity(0.9)
+                                    )
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.black.opacity(0.12))
+                                    )
+                                }
+                                .menuStyle(.borderlessButton)
+                                .fixedSize()
+                                .opacity(isHovered ? 1 : 0.75)
+                            }
+
                             Button {
                                 appState.deleteNode(id: instance.id)
                             } label: {
@@ -738,11 +863,14 @@ struct RackGearItem: View {
                         let inputRow = inputRows.indices.contains(row) ? inputRows[row] : []
                         let outputRow = outputRows.indices.contains(row) ? outputRows[row] : []
 
-                        let rowY = rackGearRowY(
-                            row: row,
-                            totalRows: visualRows,
-                            height: geo.size.height,
-                            headerHeight: headerHeight + (isCompact1UNetwork ? 4 : 8)
+                        let rowY = min(
+                            rackGearRowY(
+                                row: row,
+                                totalRows: visualRows,
+                                height: geo.size.height,
+                                headerHeight: headerHeight + (isCompact1UNetwork ? 4 : 8)
+                            ),
+                            geo.size.height - 8
                         )
                         
                         ForEach(Array(inputRow.enumerated()), id: \.element) { rowIndex, originalIndex in
@@ -760,7 +888,8 @@ struct RackGearItem: View {
                                 ),
                                 signalType: port.signalType,
                                 bundleStyle: port.bundleStyle,
-                                compactFor1U: useCompactNetworkPorts && port.bundleStyle == .network
+                                compactFor1U: useCompactNetworkPorts && port.bundleStyle == .network,
+                                isNetworkSwitch: comp.category == "Networking"
                             )
                             .position(
                                 x: rackGearPortX(
@@ -787,7 +916,8 @@ struct RackGearItem: View {
                                 ),
                                 signalType: port.signalType,
                                 bundleStyle: port.bundleStyle,
-                                compactFor1U: useCompactNetworkPorts && port.bundleStyle == .network
+                                compactFor1U: useCompactNetworkPorts && port.bundleStyle == .network,
+                                isNetworkSwitch: comp.category == "Networking"
                             )
                             .position(
                                 x: rackGearPortX(

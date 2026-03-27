@@ -23,6 +23,9 @@ class NodeInstance: ObservableObject, Identifiable {
     @Published var position: CGPoint
     var rackSlot: Int? = nil   // U-slot index within a rack tab (nil if on main canvas)
     @Published var ioConfig: IOConfig? = nil   // non-nil for configurable I/O components
+    @Published var ipAddress: String? = nil    // device IP address (for network-capable devices)
+    @Published var portVlanTags: [Int: Int] = [:]  // port index → VLAN ID (0 = untagged) for network switches
+    @Published var selectedPreset: String? = nil   // selected Lake module preset (for amps/processors)
 
     init(id: UUID = UUID(), type: String, position: CGPoint) {
         self.id = id
@@ -457,7 +460,10 @@ class AppState: ObservableObject {
                                           inputSignalType: $0.inputSignalType,
                                           outputCount: $0.outputCount,
                                           outputSignalType: $0.outputSignalType)
-                        }
+                        },
+                        ipAddress: inst.ipAddress,
+                        portVlanTags: inst.portVlanTags.isEmpty ? nil : inst.portVlanTags,
+                        selectedPreset: inst.selectedPreset
                     )
                 },
                 connections: tab.connections.map {
@@ -490,6 +496,9 @@ class AppState: ObservableObject {
                                              outputCount: cfg.outputCount,
                                              outputSignalType: cfg.outputSignalType)
                 }
+                inst.ipAddress = si.ipAddress
+                if let tags = si.portVlanTags { inst.portVlanTags = tags }
+                inst.selectedPreset = si.selectedPreset
                 tab.instances.append(inst)
             }
             for sc in savedTab.connections {
@@ -611,6 +620,9 @@ class AppState: ObservableObject {
                 inst.ioConfig = IOConfig(inputCount: cfg.inputCount, inputSignalType: cfg.inputSignalType,
                                          outputCount: cfg.outputCount, outputSignalType: cfg.outputSignalType)
             }
+            inst.ipAddress = si.ipAddress
+            if let tags = si.portVlanTags { inst.portVlanTags = tags }
+            inst.selectedPreset = si.selectedPreset
             rackTab.instances.append(inst)
         }
         for sc in userRack.connections {

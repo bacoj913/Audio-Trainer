@@ -309,7 +309,7 @@ struct StandardNodeView: View {
     let comp: Component
     @EnvironmentObject var appState: AppState
     @State private var isHovered = false
-    @State private var dragStartPos: CGPoint?
+    @GestureState private var dragOffset: CGSize = .zero
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -387,6 +387,10 @@ struct StandardNodeView: View {
                         .background(Color.orange.opacity(0.12))
                         .clipShape(Capsule())
                 }
+
+                if comp.hasNetworkIP {
+                    IPAddressBadge(instance: instance)
+                }
             }
             .padding(.horizontal, 6)
             .padding(.top, 6)
@@ -419,19 +423,19 @@ struct StandardNodeView: View {
         )
         .onHover { isHovered = $0 }
         .contentShape(Rectangle())
+        .offset(x: dragOffset.width, y: dragOffset.height)
         .gesture(
             DragGesture(minimumDistance: 4)
-                .onChanged { value in
+                .updating($dragOffset) { value, state, _ in
                     guard appState.connectingFromId == nil else { return }
-                    if dragStartPos == nil { dragStartPos = instance.position }
-                    guard let start = dragStartPos else { return }
-                    instance.position = CGPoint(
-                        x: max(0, start.x + value.translation.width),
-                        y: max(0, start.y + value.translation.height)
-                    )
+                    state = value.translation
                 }
-                .onEnded { _ in
-                    dragStartPos = nil
+                .onEnded { value in
+                    guard appState.connectingFromId == nil else { return }
+                    instance.position = CGPoint(
+                        x: max(0, instance.position.x + value.translation.width),
+                        y: max(0, instance.position.y + value.translation.height)
+                    )
                 }
         )
         // MARK: - Per-port interactive dots on card edges
@@ -594,11 +598,29 @@ struct PortEdgeDot: View {
                 }
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 6)
+                .onChanged { _ in
+                    // Start connection on first drag event from an output port
+                    if side == "out" && !isConnecting {
+                        appState.startConnecting(
+                            fromId: instance.id,
+                            fromPortIndex: portIndex
+                        )
+                    }
+                }
+                .onEnded { _ in
+                    // If drag ended without landing on an input port, cancel
+                    if appState.connectingFromId != nil {
+                        appState.cancelConnecting()
+                    }
+                }
+        )
         .help(
             side == "in"
             ? (isConnected
                ? "Click to disconnect" : "Input — click to connect")
-            : "Output — click to start connection"
+            : "Output — click or drag to start connection"
         )
     }
     
@@ -972,6 +994,63 @@ struct PortGlyph: View {
         }
     }
 }
+// MARK: - IP Address Badge
+/// Clickable green pill showing the device IP address, with a popover to edit it.
+struct IPAddressBadge: View {
+    @ObservedObject var instance: NodeInstance
+    @State private var showingPopover = false
+    @State private var editingIP: String = ""
+
+    var body: some View {
+        Button {
+            editingIP = instance.ipAddress ?? ""
+            showingPopover = true
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "network")
+                    .font(.system(size: 7, weight: .medium))
+                Text(instance.ipAddress ?? "Set IP")
+                    .font(.system(size: 9, weight: .medium))
+            }
+            .foregroundColor(.green)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Color.green.opacity(0.08))
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showingPopover, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("IP Address")
+                    .font(.system(size: 12, weight: .semibold))
+
+                TextField("e.g. 192.168.1.100", text: $editingIP)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 180)
+
+                HStack {
+                    Button("Clear") {
+                        instance.ipAddress = nil
+                        showingPopover = false
+                    }
+                    .foregroundColor(.red)
+                    Spacer()
+                    Button("Cancel") { showingPopover = false }
+                    Button("Apply") {
+                        instance.ipAddress = editingIP.trimmingCharacters(in: .whitespaces).isEmpty
+                            ? nil : editingIP.trimmingCharacters(in: .whitespaces)
+                        showingPopover = false
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            }
+            .padding(12)
+            .frame(width: 220)
+        }
+    }
+}
+
 // MARK: - Port List Section
 struct PortListSection: View {
     let inputs: [String]
@@ -1046,7 +1125,7 @@ struct RackNodeView: View {
     let comp: Component
     @EnvironmentObject var appState: AppState
     @State private var isHovered = false
-    @State private var dragStartPos: CGPoint?
+    @GestureState private var dragOffset: CGSize = .zero
     /// Measured height of the top bar + header HStack, used to position cross-rack port dots.
     @State private var headerHeight: CGFloat = 31
     @State private var showingSaveSheet = false
@@ -1072,7 +1151,7 @@ struct RackNodeView: View {
         guard let tab = rackTab else { return [] }
         return tab.instances.compactMap { inst -> SlotItem? in
             guard let c = Components.all[inst.type] else { return nil }
-            let topRow = min((inst.rackSlot ?? 0) / 2, comp.rackUnits - 1)
+            let topRow = min(inst.rackSlot ?? 0, comp.rackUnits - 1)
             return SlotItem(topRow: topRow, rowSpan: max(1, c.rackUnits), inst: inst, comp: c)
         }.sorted { $0.topRow < $1.topRow }
     }
@@ -1192,18 +1271,20 @@ struct RackNodeView: View {
         )
         .onHover { isHovered = $0 }
         .contentShape(Rectangle())
+        .offset(x: dragOffset.width, y: dragOffset.height)
         .gesture(
             DragGesture(minimumDistance: 4)
-                .onChanged { value in
+                .updating($dragOffset) { value, state, _ in
                     guard appState.connectingFromId == nil else { return }
-                    if dragStartPos == nil { dragStartPos = instance.position }
-                    guard let start = dragStartPos else { return }
+                    state = value.translation
+                }
+                .onEnded { value in
+                    guard appState.connectingFromId == nil else { return }
                     instance.position = CGPoint(
-                        x: max(0, start.x + value.translation.width),
-                        y: max(0, start.y + value.translation.height)
+                        x: max(0, instance.position.x + value.translation.width),
+                        y: max(0, instance.position.y + value.translation.height)
                     )
                 }
-                .onEnded { _ in dragStartPos = nil }
         )
         .onPreferenceChange(RackHeaderHeightKey.self) { h in
             headerHeight = h
@@ -1258,34 +1339,20 @@ struct RackNodeView: View {
                         ).isEmpty
                     }
                     
-                    ForEach(Array(visibleInputs.enumerated()), id: \.element.id) { idx, displayPort in
+                    if let inputPort = visibleInputs.first {
                         RackGroupedPortDot(
                             instance: item.inst,
-                            displayPort: displayPort
+                            displayPort: inputPort
                         )
-                        .position(
-                            x: 0,
-                            y: itemTopY + evenPortY(
-                                idx: idx,
-                                total: max(visibleInputs.count, 1),
-                                height: itemH
-                            )
-                        )
+                        .position(x: 0, y: itemTopY + itemH / 2)
                     }
-                    
-                    ForEach(Array(visibleOutputs.enumerated()), id: \.element.id) { idx, displayPort in
+
+                    if let outputPort = visibleOutputs.first {
                         RackGroupedPortDot(
                             instance: item.inst,
-                            displayPort: displayPort
+                            displayPort: outputPort
                         )
-                        .position(
-                            x: geo.size.width,
-                            y: itemTopY + evenPortY(
-                                idx: idx,
-                                total: max(visibleOutputs.count, 1),
-                                height: itemH
-                            )
-                        )
+                        .position(x: geo.size.width, y: itemTopY + itemH / 2)
                     }
                 }
             }

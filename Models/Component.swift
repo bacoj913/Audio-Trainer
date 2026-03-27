@@ -143,7 +143,8 @@ extension Component {
         level: String,
         isRack: Bool = false,
         rackUnits: Int = 0,
-        comingSoon: Bool = false
+        comingSoon: Bool = false,
+        availablePresets: [String] = []
     ) {
         self.init(
             id: id,
@@ -159,7 +160,8 @@ extension Component {
             level: level,
             isRack: isRack,
             rackUnits: rackUnits,
-            comingSoon: comingSoon
+            comingSoon: comingSoon,
+            availablePresets: availablePresets
         )
     }
 }
@@ -179,6 +181,13 @@ struct Component {
     var isRack: Bool = false
     var rackUnits: Int = 0
     var comingSoon: Bool = false
+    var availablePresets: [String] = []   // e.g. Lake module names for amps/processors
+
+    /// True for any device that participates in a network (dante, milan, aes67, avb, or plain "network" signal type).
+    var hasNetworkIP: Bool {
+        let networkTypes: Set<String> = ["dante", "milan", "aes67", "avb", "network"]
+        return (inputs + outputs).contains { networkTypes.contains($0.lowercased()) }
+    }
 
     // A placeholder for nil-safety
     static let placeholder = Component(
@@ -243,6 +252,21 @@ extension Color {
         case "Intercom":     return Color(.systemTeal) // dark blue
         default:             return Color.gray
         }
+    }
+}
+
+// MARK: - VLAN Colors
+extension Color {
+    /// Distinct colors for VLAN IDs, cycling through a palette. VLAN 0 = untagged (gray).
+    static func vlanColor(_ vlanId: Int) -> Color {
+        guard vlanId > 0 else { return Color(.systemGray) }
+        let palette: [Color] = [
+            Color(.systemBlue), Color(.systemGreen), Color(.systemOrange),
+            Color(.systemPurple), Color(.systemRed), Color(.systemTeal),
+            Color(.systemYellow), Color(.systemIndigo), Color(.systemPink),
+            Color(.systemBrown)
+        ]
+        return palette[(vlanId - 1) % palette.count]
     }
 }
 
