@@ -405,3 +405,57 @@ struct AddDanteFlowSheet: View {
         .frame(width: 400)
     }
 }
+
+// MARK: - Previews
+
+private extension AppState {
+    static var dantePreviewState: AppState {
+        let s = AppState()
+        s.addInstance(type: "mixer", position: CGPoint(x: 100, y: 100))
+        s.addInstance(type: "dante_switch", position: CGPoint(x: 300, y: 100))
+        s.addInstance(type: "wireless_rx", position: CGPoint(x: 500, y: 100))
+        s.addInstance(type: "power_amp", position: CGPoint(x: 700, y: 100))
+        return s
+    }
+
+    static var danteWithFlowsState: AppState {
+        let s = dantePreviewState
+        let devices = s.allNetworkInstances
+        if devices.count >= 2 {
+            s.addDanteFlow(
+                fromDeviceId: devices[0].inst.id, fromPortIndex: 0,
+                toDeviceId: devices[1].inst.id, toPortIndex: 0
+            )
+            s.addDanteFlow(
+                fromDeviceId: devices[0].inst.id, fromPortIndex: 1,
+                toDeviceId: devices[2 % devices.count].inst.id, toPortIndex: 0
+            )
+        }
+        return s
+    }
+}
+
+#Preview("Dante Controller – Empty") {
+    DanteControllerView()
+        .environmentObject(AppState())
+        .frame(width: 800, height: 500)
+}
+
+#Preview("Dante Controller – Devices") {
+    DanteControllerView()
+        .environmentObject(AppState.dantePreviewState)
+        .frame(width: 900, height: 550)
+}
+
+#Preview("Dante Controller – With Flows") {
+    DanteControllerView()
+        .environmentObject(AppState.danteWithFlowsState)
+        .frame(width: 900, height: 550)
+}
+
+#Preview("Add Dante Flow Sheet") {
+    let state = AppState.dantePreviewState
+    let devices = state.allNetworkInstances
+    AddDanteFlowSheet(devices: devices)
+        .environmentObject(state)
+}

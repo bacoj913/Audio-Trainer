@@ -125,3 +125,61 @@ struct CanvasTabButton: View {
         .onTapGesture { onSelect() }
     }
 }
+
+// MARK: - Previews
+
+private extension AppState {
+    static var singleTabState: AppState { AppState() }
+
+    static var multiTabState: AppState {
+        let s = AppState()
+        let rackInst = s.addInstance(type: "rack_8u", position: .zero)
+        s.openRackTab(for: rackInst.id)
+        return s
+    }
+
+    static var danteActiveState: AppState {
+        let s = AppState()
+        s.isDanteControllerActive = true
+        return s
+    }
+}
+
+#Preview("Tab Bar – Single Tab") {
+    CanvasTabBar()
+        .environmentObject(AppState.singleTabState)
+        .frame(width: 700)
+}
+
+#Preview("Tab Bar – Multiple Tabs") {
+    CanvasTabBar()
+        .environmentObject(AppState.multiTabState)
+        .frame(width: 700)
+}
+
+#Preview("Tab Bar – Dante Active") {
+    CanvasTabBar()
+        .environmentObject(AppState.danteActiveState)
+        .frame(width: 700)
+}
+
+#Preview("Canvas Tab Button – Active") {
+    HStack(spacing: 4) {
+        CanvasTabButton(
+            tab: CanvasTab(name: "Main"),
+            isActive: true,
+            canClose: false,
+            onSelect: {},
+            onClose: {}
+        )
+        CanvasTabButton(
+            tab: CanvasTab(name: "FOH Rack", parentRackInstanceId: UUID()),
+            isActive: false,
+            canClose: true,
+            onSelect: {},
+            onClose: {}
+        )
+    }
+    .padding()
+    .frame(width: 320, height: 48)
+}

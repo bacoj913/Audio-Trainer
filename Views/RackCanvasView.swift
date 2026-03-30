@@ -1038,3 +1038,65 @@ struct IOConfigPopoverView: View {
         }
     }
 }
+
+// MARK: - Previews
+
+private extension AppState {
+    /// AppState with a rack tab open and a few components placed inside.
+    static var rackCanvasPreviewState: AppState {
+        let s = AppState()
+        // Place a rack enclosure on the main canvas
+        let rackInst = s.addInstance(type: "rack_8u", position: CGPoint(x: 200, y: 200))
+        // Open its interior tab so it becomes the active tab
+        s.openRackTab(for: rackInst.id)
+        // Populate the rack with some gear
+        let amp = NodeInstance(type: "power_amp", position: CGPoint(x: 0, y: 0))
+        amp.rackSlot = 0
+        let eq  = NodeInstance(type: "equalizer",  position: CGPoint(x: 0, y: 44))
+        eq.rackSlot = 1
+        let comp = NodeInstance(type: "compressor", position: CGPoint(x: 0, y: 88))
+        comp.rackSlot = 2
+        s.activeTab.instances.append(contentsOf: [amp, eq, comp])
+        return s
+    }
+
+    static var rackCanvasNetworkState: AppState {
+        let s = AppState()
+        let rackInst = s.addInstance(type: "rack_8u", position: CGPoint(x: 200, y: 200))
+        s.openRackTab(for: rackInst.id)
+        let sw = NodeInstance(type: "dante_switch", position: CGPoint(x: 0, y: 0))
+        sw.rackSlot = 0
+        let amp = NodeInstance(type: "power_amp", position: CGPoint(x: 0, y: 44))
+        amp.rackSlot = 1
+        s.activeTab.instances.append(contentsOf: [sw, amp])
+        return s
+    }
+}
+
+#Preview("Rack Canvas – Populated") {
+    RackCanvasView()
+        .environmentObject(AppState.rackCanvasPreviewState)
+        .frame(width: 860, height: 700)
+}
+
+#Preview("Rack Canvas – Network Gear") {
+    RackCanvasView()
+        .environmentObject(AppState.rackCanvasNetworkState)
+        .frame(width: 860, height: 700)
+}
+
+#Preview("Rack Canvas – Empty") {
+    let s = AppState()
+    let rack = s.addInstance(type: "rack_8u", position: .zero)
+    s.openRackTab(for: rack.id)
+    return RackCanvasView()
+        .environmentObject(s)
+        .frame(width: 860, height: 700)
+}
+
+#Preview("VLAN Picker Popover") {
+    let inst = NodeInstance(type: "dante_switch", position: .zero)
+    VlanPickerPopover(instance: inst, portIndex: 0, label: "Dante Port 1")
+        .environmentObject(AppState())
+        .frame(width: 240)
+}

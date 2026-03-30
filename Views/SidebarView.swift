@@ -226,3 +226,28 @@ struct UserRackPaletteItemView: View {
         .help(rack.name)
     }
 }
+
+// MARK: - Previews
+
+private extension AppState {
+    static var sidebarPreviewState: AppState {
+        let s = AppState()
+        s.addInstance(type: "microphone", position: CGPoint(x: 100, y: 100))
+        s.addInstance(type: "mixer", position: CGPoint(x: 300, y: 100))
+        return s
+    }
+}
+
+#Preview("Sidebar – Free Mode") {
+    SidebarView()
+        .environmentObject(AppState.sidebarPreviewState)
+        .frame(width: 210, height: 750)
+}
+
+#Preview("Sidebar – Exercise Mode") {
+    let s = AppState.sidebarPreviewState
+    s.mode = .exercise
+    return SidebarView()
+        .environmentObject(s)
+        .frame(width: 210, height: 750)
+}

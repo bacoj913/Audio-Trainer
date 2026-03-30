@@ -277,3 +277,11 @@ struct BuilderField<Content: View>: View {
         }
     }
 }
+
+// MARK: - Previews
+
+#Preview("Exercise Builder Sheet") {
+    ExerciseBuilderView()
+        .environmentObject(AppState())
+        .frame(width: 600, height: 700)
+}
