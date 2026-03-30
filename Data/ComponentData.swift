@@ -198,56 +198,54 @@ enum Components {
                 manufacturer: "DiGiCo",
                 model: "SD12",
             inputGroups: [
-                PortGroup(connector: "Local XLR", count: 24, signalType: "mic"),
-                PortGroup(connector: "MADI", count: 2, signalType: "madi"),
+                PortGroup(connector: "Local Mic/Line XLR", count: 8, signalType: "mic"),
+                PortGroup(connector: "AES", count: 4, signalType: "aes"),
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
+                PortGroup(connector: "Word Clock", count: 1, signalType: "clock")
             ],
             outputGroups: [
-                PortGroup(connector: "Local XLR", count: 12, signalType: "line"),
-                PortGroup(connector: "MADI", count: 2, signalType: "madi"),
-                PortGroup(connector: "Dante", count: 1, signalType: "dante"),
-                PortGroup(connector: "AES", count: 1, signalType: "aes")
+                PortGroup(connector: "Local Line XLR", count: 8, signalType: "line"),
+                PortGroup(connector: "AES", count: 4, signalType: "aes"),
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
+                PortGroup(connector: "Word Clock", count: 1, signalType: "clock")
             ],
-            desc: "Digital mixing console, 72-ch I/O",
+            desc: "Digital mixing console with local analog I/O and 2 DMI expansion slots",
             level: "Line Level",
-            slotCount: 4),
+            slotCount: 2),
 
         Component(id: "mixer_yamaha",
-            name: "Yamaha PM7",
+            name: "Yamaha RIVAGE PM7",
                 iconName: "console",
             category: "Consoles",
                 manufacturer: "Yamaha",
                 model: "PM7",
-            inputGroups: [
-                PortGroup(connector: "Local XLR", count: 8, signalType: "mic"),
-                PortGroup(connector: "MADI", count: 1, signalType: "madi")
-            ],
-            outputGroups: [
-                PortGroup(connector: "Local XLR", count: 8, signalType: "line"),
-                PortGroup(connector: "Dante", count: 2, signalType: "dante"),
-                PortGroup(connector: "MADI", count: 1, signalType: "madi")
-            ],
-            desc: "Digital mixing console, Dante/MADI",
+            inputGroups: [],
+            outputGroups: [],
+            desc: "RIVAGE PM engine/surface system — I/O via HY and Mini-YGDAI expansion",
             level: "Line Level",
-            slotCount: 4),
+            slotCount: 6),
 
         Component(id: "mixer_ssl",
-            name: "SSL Live L550",
+            name: "SSL Live L550 Plus",
                 iconName: "console",
             category: "Consoles",
                 manufacturer: "Solid State Logic",
-                model: "Live L550",
+                model: "L550 Plus",
             inputGroups: [
-                PortGroup(connector: "Local XLR", count: 16, signalType: "mic"),
-                PortGroup(connector: "MADI", count: 2, signalType: "madi")
+                PortGroup(connector: "Local Mic/Line", count: 32, signalType: "mic"),
+                PortGroup(connector: "AES", count: 8, signalType: "aes"),
+                PortGroup(connector: "MADI Coax", count: 12, signalType: "madi"),
+                PortGroup(connector: "MADI Optical", count: 4, signalType: "madi")
             ],
             outputGroups: [
-                PortGroup(connector: "Local XLR", count: 16, signalType: "line"),
-                PortGroup(connector: "Dante", count: 2, signalType: "dante"),
-                PortGroup(connector: "MADI", count: 2, signalType: "madi")
+                PortGroup(connector: "Local Line", count: 32, signalType: "line"),
+                PortGroup(connector: "Headphone/Monitor", count: 4, signalType: "line"),
+                PortGroup(connector: "AES", count: 8, signalType: "aes"),
+                PortGroup(connector: "MADI Coax", count: 12, signalType: "madi"),
+                PortGroup(connector: "MADI Optical", count: 4, signalType: "madi")
             ],
-            desc: "SSL digital live console",
-            level: "Line Level",
-            slotCount: 2),
+            desc: "SSL live console with local analog, AES, and MADI I/O",
+            level: "Line Level"),
 
         Component(id: "patch_bay",
             name: "Neutrik NYS-SPP-L Patchbay",
@@ -291,16 +289,15 @@ enum Components {
             inputGroups: [
                 PortGroup(connector: "XLR/TRS Combo", count: 8, signalType: "mic"),
                 PortGroup(connector: "Optical", count: 8, signalType: "optical"),
-                PortGroup(connector: "AES", count: 8, signalType: "aes"),
                 PortGroup(connector: "Hi-Z", count: 2, signalType: "instrument")
             ],
             outputGroups: [
-                PortGroup(connector: "TRS", count: 8, signalType: "line"),
-                PortGroup(connector: "AES", count: 8, signalType: "aes"),
-                PortGroup(connector: "Optical", count: 8, signalType: "optical"),
-                PortGroup(connector: "Headphone", count: 2, signalType: "line")
+                PortGroup(connector: "Line Out", count: 8, signalType: "line"),
+                PortGroup(connector: "Monitor Out", count: 2, signalType: "line"),
+                PortGroup(connector: "Headphone", count: 2, signalType: "line"),
+                PortGroup(connector: "Optical", count: 8, signalType: "optical")
             ],
-            desc: "Thunderbolt audio interface, UAD DSP",
+            desc: "Thunderbolt audio interface with 8 Unison mic pres and optical digital I/O",
             level: "AD/DA Converter",
             rackUnits: 1),
 
@@ -313,10 +310,10 @@ enum Components {
                 model: "PLM 20000Q",
             inputGroups: [
                 PortGroup(connector: "XLR", count: 4, signalType: "line"),
-                PortGroup(connector: "AES", count: 1, signalType: "aes"),
-                PortGroup(connector: "Dante", count: 1, signalType: "dante")
+                PortGroup(connector: "AES", count: 1, signalType: "aes")
             ],
             outputGroups: [
+                PortGroup(connector: "Dante", count: 2, signalType: "dante"),
                 PortGroup(connector: "Speakon", count: 4, signalType: "speaker")
             ],
             desc: "20,000W 4-ch amplifier, Dante/AES",
@@ -798,7 +795,7 @@ enum Components {
 
         // ── Stage Boxes / Snakes ─────────────────────────────
         Component(id: "stagebox_12",
-            name: "Yamaha Rio1608-D2 (12ch)",
+            name: "Yamaha Rio1608-D2",
                 iconName: "stagebox",
             category: "Stage Racks",
                 manufacturer: "Yamaha",
@@ -810,30 +807,29 @@ enum Components {
                 PortGroup(connector: "XLR", count: 8, signalType: "line"),
                 PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante")
             ],
-            desc: "12-in stage box, Dante network I/O",
+            desc: "16-in / 8-out Dante I/O rack",
             level: "Analog → Dante",
             rackUnits: 3),
 
         Component(id: "stagebox_16",
-            name: "DiGiCo Orange Box (16ch)",
+            name: "DiGiCo Orange Box",
                 iconName: "stagebox",
             category: "Stage Racks",
                 manufacturer: "DiGiCo",
                 model: "Orange Box",
             inputGroups: [
-                PortGroup(connector: "XLR", count: 16, signalType: "mic")
+                PortGroup(connector: "Word Clock", count: 1, signalType: "clock")
             ],
             outputGroups: [
-                PortGroup(connector: "XLR", count: 8, signalType: "line"),
-                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
-                PortGroup(connector: "Dante EtherCon", count: 1, signalType: "dante")
+                PortGroup(connector: "Word Clock", count: 1, signalType: "clock")
             ],
-            desc: "16-in stage box, MADI + Dante",
-            level: "Analog → MADI/Dante",
-            rackUnits: 2),
+            desc: "2U format converter with 2 DMI slots; audio I/O depends on installed cards",
+            level: "Digital Format Conversion",
+            rackUnits: 2,
+            slotCount: 2),
 
         Component(id: "stagebox_24",
-            name: "Yamaha Rio3224-D2 (24ch)",
+            name: "Yamaha Rio3224-D2",
                 iconName: "stagebox",
             category: "Stage Racks",
                 manufacturer: "Yamaha",
@@ -843,10 +839,10 @@ enum Components {
             ],
             outputGroups: [
                 PortGroup(connector: "XLR", count: 16, signalType: "line"),
-                PortGroup(connector: "XLR", count: 4, signalType: "aes"),
+                PortGroup(connector: "AES", count: 4, signalType: "aes"),
                 PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante")
             ],
-            desc: "24-in/8-out stage box, Dante",
+            desc: "32-in / 16-out Dante I/O rack with 8 AES/EBU output channels",
             level: "Analog → Dante",
             rackUnits: 5),
 
@@ -874,21 +870,21 @@ enum Components {
             slotCount: 14),
 
         Component(id: "stagebox_40",
-            name: "Yamaha Rio6432-D2 (40ch)",
+            name: "Yamaha Rio6432-D2",
                 iconName: "stagebox",
             category: "Stage Racks",
                 manufacturer: "Yamaha",
                 model: "Rio6432-D2",
             inputGroups: [
-                PortGroup(connector: "XLR", count: 48, signalType: "mic")
+                PortGroup(connector: "XLR", count: 64, signalType: "mic")
             ],
             outputGroups: [
-                PortGroup(connector: "XLR", count: 16, signalType: "line"),
+                PortGroup(connector: "XLR", count: 32, signalType: "line"),
                 PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante")
             ],
-            desc: "40-in/32-out stage box, dual Dante",
+            desc: "64-in / 32-out Dante I/O rack",
             level: "Analog → Dante",
-            rackUnits: 3),
+            rackUnits: 5),
 
         // ── Rack Enclosures ──────────────────────────────────
         Component(id: "rack_8u",
@@ -1013,68 +1009,234 @@ enum Components {
         // TODO: Add Intercom Devices
 
         // ── Expansion Cards ───────────────────────────────────
-        Component(id: "card_dante_64",
-            name: "Dante 64-ch Card",
+        Component(id: "card_digico_dmi_dante64_96",
+            name: "DiGiCo DMI-DANTE64@96",
                 iconName: "interface",
             category: "Expansion Cards",
-                manufacturer: "Generic",
-                model: "Dante 64",
+                manufacturer: "DiGiCo",
+                model: "DMI-DANTE64@96",
             inputGroups: [
                 PortGroup(connector: "Dante", count: 1, signalType: "dante")
             ],
             outputGroups: [
                 PortGroup(connector: "Dante", count: 1, signalType: "dante")
             ],
-            desc: "64-channel Dante expansion card",
+            desc: "64-channel Dante DMI expansion card for SD consoles and Orange Box",
             level: "Network Audio",
             isSlotCard: true),
 
-        Component(id: "card_madi_64",
-            name: "MADI 64-ch Card",
+        Component(id: "card_digico_dmi_madi_b",
+            name: "DiGiCo DMI-MADI-B",
                 iconName: "interface",
             category: "Expansion Cards",
-                manufacturer: "Generic",
-                model: "MADI 64",
+                manufacturer: "DiGiCo",
+                model: "DMI-MADI-B",
             inputGroups: [
-                PortGroup(connector: "MADI", count: 1, signalType: "madi")
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi")
             ],
             outputGroups: [
-                PortGroup(connector: "MADI", count: 1, signalType: "madi")
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi")
             ],
-            desc: "64-channel MADI expansion card",
+            desc: "BNC MADI DMI expansion card",
             level: "Digital",
             isSlotCard: true),
 
-        Component(id: "card_aes_8",
-            name: "AES/EBU 8-pair Card",
+        Component(id: "card_digico_dmi_aes",
+            name: "DiGiCo DMI-AES",
                 iconName: "interface",
             category: "Expansion Cards",
-                manufacturer: "Generic",
-                model: "AES 16",
+                manufacturer: "DiGiCo",
+                model: "DMI-AES",
             inputGroups: [
                 PortGroup(connector: "AES", count: 8, signalType: "aes")
             ],
             outputGroups: [
                 PortGroup(connector: "AES", count: 8, signalType: "aes")
             ],
-            desc: "8-pair AES/EBU (16-channel) expansion card",
+            desc: "8-pair AES/EBU DMI expansion card",
             level: "Digital",
             isSlotCard: true),
 
-        Component(id: "card_analog_8",
-            name: "Analog 8-ch Card",
+        Component(id: "card_digico_dmi_aviom",
+            name: "DiGiCo DMI-AVIOM",
                 iconName: "interface",
             category: "Expansion Cards",
-                manufacturer: "Generic",
-                model: "Analog 8",
+                manufacturer: "DiGiCo",
+                model: "DMI-AVIOM",
             inputGroups: [
-                PortGroup(connector: "XLR", count: 8, signalType: "line")
+                PortGroup(connector: "A-Net", count: 1, signalType: "network")
             ],
+            outputGroups: [
+                PortGroup(connector: "A-Net", count: 1, signalType: "network")
+            ],
+            desc: "Aviom A-Net DMI expansion card",
+            level: "Personal Monitoring Network",
+            isSlotCard: true),
+
+        Component(id: "card_digico_sdrack_micline_8",
+            name: "DiGiCo SD-Rack Mic/Line Input Module",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "DiGiCo",
+                model: "8 Mic/Line In",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 8, signalType: "mic")
+            ],
+            outputGroups: [],
+            desc: "8-channel SD-Rack mic/line input module",
+            level: "Mic Level",
+            isSlotCard: true),
+
+        Component(id: "card_digico_sdrack_lineout_8",
+            name: "DiGiCo SD-Rack Line Output Module",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "DiGiCo",
+                model: "8 Line Out",
+            inputGroups: [],
             outputGroups: [
                 PortGroup(connector: "XLR", count: 8, signalType: "line")
             ],
-            desc: "8-channel analog XLR expansion card",
+            desc: "8-channel SD-Rack analog line output module",
             level: "Line Level",
+            isSlotCard: true),
+
+        Component(id: "card_digico_sdrack_aesout_8",
+            name: "DiGiCo SD-Rack AES/EBU Output Module",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "DiGiCo",
+                model: "8 AES Out",
+            inputGroups: [],
+            outputGroups: [
+                PortGroup(connector: "AES", count: 4, signalType: "aes")
+            ],
+            desc: "8-channel SD-Rack AES/EBU output module",
+            level: "Digital",
+            isSlotCard: true),
+
+        Component(id: "card_yamaha_hy256_tl",
+            name: "Yamaha HY256-TL",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Yamaha",
+                model: "HY256-TL",
+            inputGroups: [
+                PortGroup(connector: "TWINLANe", count: 2, signalType: "network")
+            ],
+            outputGroups: [
+                PortGroup(connector: "TWINLANe", count: 2, signalType: "network")
+            ],
+            desc: "256-channel HY card for TWINLANe transport",
+            level: "Network Audio",
+            isSlotCard: true),
+
+        Component(id: "card_yamaha_hy144_d",
+            name: "Yamaha HY144-D",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Yamaha",
+                model: "HY144-D",
+            inputGroups: [
+                PortGroup(connector: "Dante", count: 2, signalType: "dante")
+            ],
+            outputGroups: [
+                PortGroup(connector: "Dante", count: 2, signalType: "dante")
+            ],
+            desc: "144-channel Dante HY card",
+            level: "Network Audio",
+            isSlotCard: true),
+
+        Component(id: "card_yamaha_hy144_d_src",
+            name: "Yamaha HY144-D-SRC",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Yamaha",
+                model: "HY144-D-SRC",
+            inputGroups: [
+                PortGroup(connector: "Dante", count: 2, signalType: "dante")
+            ],
+            outputGroups: [
+                PortGroup(connector: "Dante", count: 2, signalType: "dante")
+            ],
+            desc: "Dante HY card with SRC support",
+            level: "Network Audio",
+            isSlotCard: true),
+
+        Component(id: "card_yamaha_hy128_md",
+            name: "Yamaha HY128-MD",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Yamaha",
+                model: "HY128-MD",
+            inputGroups: [
+                PortGroup(connector: "MADI", count: 2, signalType: "madi")
+            ],
+            outputGroups: [
+                PortGroup(connector: "MADI", count: 2, signalType: "madi")
+            ],
+            desc: "128-channel MADI HY card",
+            level: "Digital",
+            isSlotCard: true),
+
+        Component(id: "card_yamaha_my8_ae96s",
+            name: "Yamaha MY8-AE96S",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Yamaha",
+                model: "MY8-AE96S",
+            inputGroups: [
+                PortGroup(connector: "AES", count: 4, signalType: "aes")
+            ],
+            outputGroups: [
+                PortGroup(connector: "AES", count: 4, signalType: "aes")
+            ],
+            desc: "Mini-YGDAI 8-channel AES/EBU card",
+            level: "Digital",
+            isSlotCard: true),
+
+        Component(id: "card_yamaha_ry16_ml_silk",
+            name: "Yamaha RY16-ML-SILK",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Yamaha",
+                model: "RY16-ML-SILK",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 16, signalType: "mic")
+            ],
+            outputGroups: [],
+            desc: "16-channel RY mic/line input card with SILK",
+            level: "Mic Level",
+            isSlotCard: true),
+
+        Component(id: "card_yamaha_ry16_da",
+            name: "Yamaha RY16-DA",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Yamaha",
+                model: "RY16-DA",
+            inputGroups: [],
+            outputGroups: [
+                PortGroup(connector: "XLR", count: 16, signalType: "line")
+            ],
+            desc: "16-channel RY analog output card",
+            level: "Line Level",
+            isSlotCard: true),
+
+        Component(id: "card_yamaha_ry16_ae",
+            name: "Yamaha RY16-AE",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Yamaha",
+                model: "RY16-AE",
+            inputGroups: [
+                PortGroup(connector: "AES", count: 8, signalType: "aes")
+            ],
+            outputGroups: [
+                PortGroup(connector: "AES", count: 8, signalType: "aes")
+            ],
+            desc: "16-channel RY AES/EBU card",
+            level: "Digital",
             isSlotCard: true),
     ]
 }
