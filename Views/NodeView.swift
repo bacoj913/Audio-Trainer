@@ -59,23 +59,27 @@ func bodyPortY(idx: Int, rowCount _: Int) -> CGFloat {
 /// - Returns: Total node height.
 func standardNodeHeight(for comp: Component) -> CGFloat {
     let portCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
-    
+
+    let bodyHeight: CGFloat
     if portCount <= 1 {
-        return NodeView.standardTopReserved
-        + NodeView.standardMinBodyHeight
-        + NodeView.standardBottomPadding
+        bodyHeight = NodeView.standardMinBodyHeight
+    } else {
+        let portsHeight = CGFloat(portCount - 1) * NodeView.standardPortSpacing
+        bodyHeight = max(
+            NodeView.standardMinBodyHeight,
+            NodeView.standardBodyTopInset + portsHeight + NodeView.standardBodyBottomInset
+        )
     }
-    
-    let portsHeight = CGFloat(portCount - 1) * NodeView.standardPortSpacing
-    let bodyHeight = max(
-        NodeView.standardMinBodyHeight,
-        NodeView.standardBodyTopInset + portsHeight
-        + NodeView.standardBodyBottomInset
-    )
-    
+
+    // Reserve 22pt per slot row + 20pt for section header when device has expansion slots
+    let slotSectionHeight: CGFloat = comp.slotCount > 0
+        ? CGFloat(comp.slotCount) * 22 + 20
+        : 0
+
     return NodeView.standardTopReserved
-    + bodyHeight
-    + NodeView.standardBottomPadding
+        + bodyHeight
+        + slotSectionHeight
+        + NodeView.standardBottomPadding
 }
 /// Estimated text width for layout sizing without exact text measurement.
 /// - Parameters:
@@ -399,7 +403,14 @@ struct StandardNodeView: View {
             .padding(.horizontal, 6)
             .padding(.top, 6)
             .padding(.bottom, 8)
-            
+
+            // Slot cards section (only shown for devices with expansion slots)
+            if comp.slotCount > 0 {
+                SlotCardsSection(instance: instance, comp: comp)
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 4)
+            }
+
             Spacer(minLength: 0)
         }
         .frame(
@@ -1115,6 +1126,162 @@ struct PortPill: View {
                 .opacity(0.08)
         )
         .clipShape(RoundedRectangle(cornerRadius: 9))
+    }
+}
+
+// MARK: - Slot Cards Section
+
+struct SlotCardsSection: View {
+    @ObservedObject var instance: NodeInstance
+    let comp: Component
+    @EnvironmentObject var appState: AppState
+    @State private var pickingSlot: Int? = nil
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Section header
+            HStack {
+                Text("Expansion Slots")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                Spacer()
+            }
+            .padding(.vertical, 4)
+            .overlay(Divider(), alignment: .top)
+
+            // One row per slot
+            ForEach(0..<comp.slotCount, id: \.self) { slotIdx in
+                SlotRow(
+                    slotIndex: slotIdx,
+                    card: instance.slotCards[slotIdx],
+                    onAdd: { pickingSlot = slotIdx },
+                    onRemove: {
+                        instance.slotCards.removeValue(forKey: slotIdx)
+                        // Drop any connections that referenced the removed ports
+                        if let cardComp = Components.all[instance.slotCards[slotIdx]?.cardType ?? ""] {
+                            let basePorts = comp.ports
+                            let removedInputOffset = basePorts.inputs.count + cardComp.ports.inputs.count * slotIdx
+                            let removedOutputOffset = basePorts.outputs.count + cardComp.ports.outputs.count * slotIdx
+                            appState.clampConnections(
+                                for: instance.id,
+                                inputCount: removedInputOffset,
+                                outputCount: removedOutputOffset
+                            )
+                        }
+                    }
+                )
+            }
+        }
+        .sheet(isPresented: Binding(get: { pickingSlot != nil }, set: { if !$0 { pickingSlot = nil } })) {
+            SlotCardPickerSheet(slotIndex: pickingSlot ?? 0) { cardType in
+                if let slot = pickingSlot {
+                    instance.slotCards[slot] = SlotCard(slotNumber: slot, cardType: cardType)
+                }
+                pickingSlot = nil
+            }
+        }
+    }
+}
+
+private struct SlotRow: View {
+    let slotIndex: Int
+    let card: SlotCard?
+    let onAdd: () -> Void
+    let onRemove: () -> Void
+
+    private var cardComp: Component? {
+        guard let c = card else { return nil }
+        return Components.all[c.cardType]
+    }
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text("S\(slotIndex + 1)")
+                .font(.system(size: 8, weight: .medium, design: .monospaced))
+                .foregroundColor(.secondary)
+                .frame(width: 16)
+
+            if let cc = cardComp {
+                Circle()
+                    .fill(Color.categoryColor(cc.category))
+                    .frame(width: 6, height: 6)
+                Text(cc.name)
+                    .font(.system(size: 9))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Button { onRemove() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text("Empty")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary.opacity(0.6))
+                Spacer(minLength: 0)
+                Button { onAdd() } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 9))
+                        .foregroundColor(.accentColor)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(height: 22)
+    }
+}
+
+private struct SlotCardPickerSheet: View {
+    let slotIndex: Int
+    let onSelect: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    private var cards: [Component] {
+        Components.list.filter { $0.isSlotCard }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Choose card for Slot \(slotIndex + 1)")
+                .font(.system(size: 15, weight: .semibold))
+
+            ForEach(cards, id: \.id) { card in
+                Button {
+                    onSelect(card.id)
+                    dismiss()
+                } label: {
+                    HStack(spacing: 10) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.categoryColor(card.category))
+                            .frame(width: 6, height: 36)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(card.name)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.primary)
+                            Text(card.desc)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+            }
+
+            Button("Cancel") { dismiss() }
+                .keyboardShortcut(.escape)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(20)
+        .frame(width: 340)
     }
 }
 
