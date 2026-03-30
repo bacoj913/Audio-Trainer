@@ -5,9 +5,10 @@ import SwiftUI
 struct CanvasTabBar: View {
     @EnvironmentObject var appState: AppState
 
+    private let danteSlotWidth: CGFloat = 110
+
     var body: some View {
         HStack(spacing: 0) {
-            // Canvas / rack tabs
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 2) {
                     ForEach(Array(appState.tabs.enumerated()), id: \.element.id) { idx, tab in
@@ -23,28 +24,32 @@ struct CanvasTabBar: View {
                         }
                     }
                 }
-                .padding(.horizontal, 8)
+                .padding(.leading, 8)
                 .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipped()
 
-            // Separator
-            Rectangle()
-                .fill(Color.primary.opacity(0.12))
-                .frame(width: 1, height: 18)
-                .padding(.horizontal, 4)
+            HStack(spacing: 4) {
+                Rectangle()
+                    .fill(Color.primary.opacity(0.12))
+                    .frame(width: 1, height: 18)
 
-            // Dante controller tab button
-            DanteTabButton(isActive: appState.isDanteControllerActive) {
-                appState.isDanteControllerActive = true
+                DanteTabButton(isActive: appState.isDanteControllerActive) {
+                    appState.isDanteControllerActive = true
+                }
             }
+            .frame(width: danteSlotWidth, alignment: .trailing)
             .padding(.trailing, 8)
+            .padding(.vertical, 4)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 32)
         .background(.ultraThinMaterial)
         .overlay(Divider(), alignment: .bottom)
     }
 }
-
 // MARK: - Dante Tab Button
 
 private struct DanteTabButton: View {

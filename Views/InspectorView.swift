@@ -6,17 +6,28 @@ struct InspectorView: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
-        ScrollView {
-            switch appState.mode {
-            case .free:     FreePanelView()
-            case .exercise: ExercisePanelView()
-            case .rf:       EmptyView()
+        ZStack(alignment: .leading) {
+            Color(nsColor: .windowBackgroundColor)
+                .opacity(0.96)
+
+            ScrollView {
+                switch appState.mode {
+                case .free:
+                    FreePanelView()
+                case .exercise:
+                    ExercisePanelView()
+                case .rf:
+                    EmptyView()
+                }
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.96))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .leading) {
+            Divider()
+        }
+        .clipped()
     }
 }
-
 // MARK: - Free Mode Panel
 struct FreePanelView: View {
     @EnvironmentObject var appState: AppState
