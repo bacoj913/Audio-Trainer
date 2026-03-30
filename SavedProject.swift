@@ -9,6 +9,7 @@ struct SavedProject: Codable {
     var version: Int = 1
     var tabs: [SavedTab]
     var crossTabConnections: [SavedConnection]
+    var danteFlows: [SavedDanteFlow]? = nil
 }
 
 // MARK: - Tab (main canvas or rack interior)
@@ -33,8 +34,27 @@ struct SavedInstance: Codable {
     var ipAddress: String?
     var portVlanTags: [Int: Int]?
     var selectedPreset: String?
+    var slotCards: [Int: SavedSlotCard]?
+    var danteDeviceName: String?
 }
 
+// MARK: - Expansion slot card
+
+struct SavedSlotCard: Codable {
+    var id: UUID
+    var slotNumber: Int
+    var cardType: String
+}
+
+// MARK: - Dante routing flow
+
+struct SavedDanteFlow: Codable {
+    var id: UUID
+    var fromDeviceId: UUID
+    var fromPortIndex: Int
+    var toDeviceId: UUID
+    var toPortIndex: Int
+}
 
 // MARK: - Configurable I/O override
 
