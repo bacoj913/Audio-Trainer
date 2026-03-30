@@ -41,7 +41,7 @@ struct CanvasTabBar: View {
                 }
             }
             .frame(width: danteSlotWidth, alignment: .trailing)
-            .padding(.trailing, 8)
+            .padding(.trailing, 20)
             .padding(.vertical, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
