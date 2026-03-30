@@ -353,3 +353,41 @@ private struct PositionedNodeView: View {
         return standardNodeHeight(for: comp) / 2
     }
 }
+
+// MARK: - Previews
+
+private extension AppState {
+    static var canvasEmptyState: AppState { AppState() }
+
+    static var canvasPopulatedState: AppState {
+        let s = AppState()
+        let mic  = s.addInstance(type: "microphone",  position: CGPoint(x: 80,  y: 120))
+        let pre  = s.addInstance(type: "preamp",       position: CGPoint(x: 300, y: 80))
+        let mix  = s.addInstance(type: "mixer",        position: CGPoint(x: 530, y: 100))
+        let amp  = s.addInstance(type: "power_amp",    position: CGPoint(x: 760, y: 100))
+        let spk  = s.addInstance(type: "speakers",     position: CGPoint(x: 980, y: 100))
+        s.activeTab.connections.append(NodeConnection(fromId: mic.id,  fromPortIndex: 0,
+                                                      toId: pre.id,  toPortIndex: 0))
+        s.activeTab.connections.append(NodeConnection(fromId: pre.id,  fromPortIndex: 0,
+                                                      toId: mix.id,  toPortIndex: 0))
+        s.activeTab.connections.append(NodeConnection(fromId: mix.id,  fromPortIndex: 0,
+                                                      toId: amp.id,  toPortIndex: 0))
+        s.activeTab.connections.append(NodeConnection(fromId: amp.id,  fromPortIndex: 0,
+                                                      toId: spk.id,  toPortIndex: 0))
+        return s
+    }
+}
+
+#Preview("Canvas – Empty") {
+    CanvasView()
+        .environmentObject(AppState.canvasEmptyState)
+        .frame(width: 1100, height: 700)
+        .coordinateSpace(name: "canvas")
+}
+
+#Preview("Canvas – Signal Chain") {
+    CanvasView()
+        .environmentObject(AppState.canvasPopulatedState)
+        .frame(width: 1200, height: 700)
+        .coordinateSpace(name: "canvas")
+}

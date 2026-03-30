@@ -220,3 +220,32 @@ struct InspectorSection<Content: View>: View {
         .overlay(Divider(), alignment: .bottom)
     }
 }
+
+// MARK: - Previews
+
+private extension AppState {
+    static var inspectorFreeState: AppState {
+        let s = AppState()
+        s.addInstance(type: "mixer", position: CGPoint(x: 100, y: 100))
+        s.addInstance(type: "microphone", position: CGPoint(x: 300, y: 100))
+        return s
+    }
+
+    static var inspectorExerciseState: AppState {
+        let s = AppState()
+        s.mode = .exercise
+        return s
+    }
+}
+
+#Preview("Inspector – Free Mode") {
+    InspectorView()
+        .environmentObject(AppState.inspectorFreeState)
+        .frame(width: 220, height: 700)
+}
+
+#Preview("Inspector – Exercise Mode") {
+    InspectorView()
+        .environmentObject(AppState.inspectorExerciseState)
+        .frame(width: 220, height: 700)
+}
