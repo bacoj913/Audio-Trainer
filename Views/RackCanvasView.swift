@@ -102,12 +102,19 @@ func rackFacePortFamilyName(signalType: String, fallbackLabel: String) -> String
         .trimmingCharacters(in: .whitespacesAndNewlines)
         .lowercased()
 
+    let fallbackNormalized = fallbackLabel
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased()
+
     switch normalized {
     case "dante", "aes67", "milan", "avb", "network":
         return "Dante"
     case "aes", "aes3":
         return "AES"
     case "madi":
+        if fallbackNormalized.contains("aux") {
+            return "Aux"
+        }
         return "MADI"
     case "mic":
         return "Mic"
@@ -115,7 +122,16 @@ func rackFacePortFamilyName(signalType: String, fallbackLabel: String) -> String
         return "Line"
     case "speaker":
         return "Spk"
+    case "clock", "word clock", "wc":
+        return "Clock"
     default:
+        if fallbackNormalized.contains("word clock") || fallbackNormalized.contains("clock") {
+            return "Clock"
+        }
+        if fallbackNormalized.contains("aux") {
+            return "Aux"
+        }
+
         if !fallbackLabel.isEmpty {
             let firstWord = fallbackLabel
                 .split(separator: " ")
@@ -127,53 +143,161 @@ func rackFacePortFamilyName(signalType: String, fallbackLabel: String) -> String
     }
 }
 
-func rackFacePortTrailingNumber(from label: String, fallback index: Int) -> String {
+func rackFacePortTrailingNumber(from label: String) -> String? {
     let digits = label.reversed().prefix { $0.isNumber }.reversed()
-    if !digits.isEmpty {
-        return String(digits)
+    return digits.isEmpty ? nil : String(digits)
+}
+
+func rackFacePortOrdinalWithinFamily(
+    ports: [VisualPort],
+    upTo portIndex: Int
+) -> Int {
+    guard ports.indices.contains(portIndex) else { return portIndex + 1 }
+
+    let targetPort = ports[portIndex]
+    let targetFamily = rackFacePortFamilyName(
+        signalType: targetPort.signalType,
+        fallbackLabel: targetPort.label
+    )
+
+    var ordinal = 0
+
+    for idx in 0...portIndex {
+        let port = ports[idx]
+        let family = rackFacePortFamilyName(
+            signalType: port.signalType,
+            fallbackLabel: port.label
+        )
+
+        if family == targetFamily {
+            ordinal += 1
+        }
     }
-    return "\(index + 1)"
+
+    return ordinal
 }
 
 func rackFaceCompactLabel(
     for port: VisualPort,
-    portIndex: Int
+    portIndex: Int,
+    ports: [VisualPort]
 ) -> String {
     let family = rackFacePortFamilyName(
         signalType: port.signalType,
         fallbackLabel: port.label
     )
-    let number = rackFacePortTrailingNumber(
-        from: port.label,
-        fallback: portIndex
-    )
+
+    let number = rackFacePortTrailingNumber(from: port.label)
+        ?? "\(rackFacePortOrdinalWithinFamily(ports: ports, upTo: portIndex))"
+
     return "\(family) \(number)"
 }
-
 func rackFaceDisplayLabel(
     for port: VisualPort,
     portIndex: Int,
+    ports: [VisualPort],
     inRowCount rowCount: Int,
     totalSideCount: Int
 ) -> String {
     if rowCount <= 4 && totalSideCount <= 8 {
         return port.label
     }
-
+    
     if rowCount <= 8 {
         return rackFaceCompactLabel(
             for: port,
-            portIndex: portIndex
+            portIndex: portIndex,
+            ports: ports
         )
     }
-
-    // Extremely dense rows: still keep names, but only compact ones
+    
     return rackFaceCompactLabel(
         for: port,
-        portIndex: portIndex
+        portIndex: portIndex,
+        ports: ports
     )
 }
+// MARK: - Rack Slot Layout Helpers
 
+enum RackSlotArrangement {
+    case horizontal
+    case vertical
+}
+
+func rackGearSlotArrangement(for comp: Component) -> RackSlotArrangement {
+    switch comp.category {
+    case "Stage Racks", "Stage Boxes":
+        return .vertical
+    default:
+        return .horizontal
+    }
+}
+
+func rackGearSlotCardsAreaHeight(for comp: Component) -> CGFloat {
+    guard comp.slotCount > 0 else { return 0 }
+
+    switch rackGearSlotArrangement(for: comp) {
+    case .horizontal:
+        return CGFloat(comp.slotCount) * 22 + CGFloat(max(comp.slotCount - 1, 0)) * 4
+    case .vertical:
+        return 30
+    }
+}
+
+func rackGearSlotSectionHeight(for comp: Component) -> CGFloat {
+    guard comp.slotCount > 0 else { return 0 }
+    return 16 + rackGearSlotCardsAreaHeight(for: comp)
+}
+
+// MARK: - Rack Slot Port Index Helpers
+
+func rackSlotCardInputIndexes(
+    instance: NodeInstance,
+    hostComp: Component,
+    slotIndex: Int
+) -> [Int] {
+    guard
+        let slotCard = instance.slotCards[slotIndex],
+        let cardComp = Components.all[slotCard.cardType]
+    else {
+        return []
+    }
+
+    var start = hostComp.ports.inputs.count
+
+    for idx in 0..<slotIndex {
+        if let prior = instance.slotCards[idx],
+           let priorComp = Components.all[prior.cardType] {
+            start += priorComp.ports.inputs.count
+        }
+    }
+
+    return Array(start..<(start + cardComp.ports.inputs.count))
+}
+
+func rackSlotCardOutputIndexes(
+    instance: NodeInstance,
+    hostComp: Component,
+    slotIndex: Int
+) -> [Int] {
+    guard
+        let slotCard = instance.slotCards[slotIndex],
+        let cardComp = Components.all[slotCard.cardType]
+    else {
+        return []
+    }
+
+    var start = hostComp.ports.outputs.count
+
+    for idx in 0..<slotIndex {
+        if let prior = instance.slotCards[idx],
+           let priorComp = Components.all[prior.cardType] {
+            start += priorComp.ports.outputs.count
+        }
+    }
+
+    return Array(start..<(start + cardComp.ports.outputs.count))
+}
 // MARK: - RackCanvasView
 struct RackCanvasView: View {
     @EnvironmentObject var appState: AppState
@@ -496,8 +620,12 @@ struct RackCanvasFacePort: View {
         compactFor1U ? 38 : 44
     }
 
+    private var labelBandHeight: CGFloat {
+        compactFor1U ? 10 : 12
+    }
+
     private var totalHeight: CGFloat {
-        label.isEmpty ? (compactFor1U ? 16 : 18) : (compactFor1U ? 27 : 30)
+        labelBandHeight + portShellHeight
     }
 
     private var glyphScale: CGFloat {
@@ -505,17 +633,21 @@ struct RackCanvasFacePort: View {
     }
 
     var body: some View {
-        VStack(spacing: compactFor1U ? 1 : 2) {
-            if !label.isEmpty {
-                Text(label)
-                    .font(.system(size: compactFor1U ? 6 : 7, weight: .medium))
-                    .foregroundColor(.primary.opacity(0.78))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .truncationMode(.tail)
-                    .frame(width: labelWidth, alignment: .center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .allowsHitTesting(false)
+        VStack(spacing: 0) {
+            ZStack(alignment: .top) {
+                if !label.isEmpty {
+                    Text(label)
+                        .font(.system(size: compactFor1U ? 6 : 7, weight: .medium))
+                        .foregroundColor(.primary.opacity(0.78))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .truncationMode(.tail)
+                        .frame(width: labelWidth, height: labelBandHeight, alignment: .top)
+                        .allowsHitTesting(false)
+                } else {
+                    Color.clear
+                        .frame(width: labelWidth, height: labelBandHeight)
+                }
             }
 
             ZStack {
@@ -530,7 +662,6 @@ struct RackCanvasFacePort: View {
                 )
                 .scaleEffect(glyphScale)
 
-                // VLAN badge for network switch ports
                 if isNetworkSwitch && vlanId > 0 {
                     Text("\(vlanId)")
                         .font(.system(size: 5, weight: .bold, design: .monospaced))
@@ -538,6 +669,7 @@ struct RackCanvasFacePort: View {
                         .allowsHitTesting(false)
                 }
             }
+            .frame(width: labelWidth, height: portShellHeight, alignment: .top)
         }
         .frame(width: labelWidth, height: totalHeight, alignment: .top)
         .contentShape(Rectangle())
@@ -652,6 +784,261 @@ struct VlanPickerPopover: View {
     }
 }
 
+private struct RackSlotCardFace: View {
+    @ObservedObject var instance: NodeInstance
+    let hostComp: Component
+    let slotIndex: Int
+    let arrangement: RackSlotArrangement
+
+    private var slotCard: SlotCard? {
+        instance.slotCards[slotIndex]
+    }
+
+    private var cardComp: Component? {
+        guard let slotCard else { return nil }
+        return Components.all[slotCard.cardType]
+    }
+
+    private var inputIndexes: [Int] {
+        rackSlotCardInputIndexes(
+            instance: instance,
+            hostComp: hostComp,
+            slotIndex: slotIndex
+        )
+    }
+
+    private var outputIndexes: [Int] {
+        rackSlotCardOutputIndexes(
+            instance: instance,
+            hostComp: hostComp,
+            slotIndex: slotIndex
+        )
+    }
+
+    private var inputPorts: [VisualPort] {
+        guard let cardComp else { return [] }
+        return makeVisualPorts(
+            labels: cardComp.ports.inputs,
+            signalTypes: cardComp.inputs
+        )
+    }
+
+    private var outputPorts: [VisualPort] {
+        guard let cardComp else { return [] }
+        return makeVisualPorts(
+            labels: cardComp.ports.outputs,
+            signalTypes: cardComp.outputs
+        )
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(Color.primary.opacity(0.04))
+                RoundedRectangle(cornerRadius: 5)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+
+                if let cardComp {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(Color.categoryColor(cardComp.category))
+                            .frame(width: 5, height: 5)
+
+                        Text(cardComp.name)
+                            .font(.system(size: arrangement == .vertical ? 7 : 8, weight: .medium))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.top, arrangement == .vertical ? 3 : 0)
+                } else {
+                    Text("Empty")
+                        .font(.system(size: 8))
+                        .foregroundColor(.secondary.opacity(0.6))
+                }
+
+                switch arrangement {
+                case .horizontal:
+                    // Inputs in one horizontal row on the left half,
+                    // outputs in one horizontal row on the right half.
+                    ForEach(Array(inputPorts.enumerated()), id: \.offset) { idx, port in
+                        if inputIndexes.indices.contains(idx) {
+                            RackCanvasFacePort(
+                                instance: instance,
+                                portIndex: inputIndexes[idx],
+                                side: "in",
+                                label: "",
+                                signalType: port.signalType,
+                                bundleStyle: port.bundleStyle,
+                                compactFor1U: true,
+                                isNetworkSwitch: false
+                            )
+                            .position(
+                                x: evenlySpacedX(
+                                    idx: idx,
+                                    total: inputPorts.count,
+                                    minX: 18,
+                                    maxX: max(18, geo.size.width * 0.44)
+                                ),
+                                y: geo.size.height * 0.72
+                            )
+                        }
+                    }
+
+                    ForEach(Array(outputPorts.enumerated()), id: \.offset) { idx, port in
+                        if outputIndexes.indices.contains(idx) {
+                            RackCanvasFacePort(
+                                instance: instance,
+                                portIndex: outputIndexes[idx],
+                                side: "out",
+                                label: "",
+                                signalType: port.signalType,
+                                bundleStyle: port.bundleStyle,
+                                compactFor1U: true,
+                                isNetworkSwitch: false
+                            )
+                            .position(
+                                x: evenlySpacedX(
+                                    idx: idx,
+                                    total: outputPorts.count,
+                                    minX: min(geo.size.width - 18, geo.size.width * 0.56),
+                                    maxX: geo.size.width - 18
+                                ),
+                                y: geo.size.height * 0.72
+                            )
+                        }
+                    }
+
+                case .vertical:
+                    let verticalPorts: [(Int, String, VisualPort)] =
+                        Array(inputPorts.enumerated()).compactMap { idx, port in
+                            guard inputIndexes.indices.contains(idx) else { return nil }
+                            return (inputIndexes[idx], "in", port)
+                        }
+                        + Array(outputPorts.enumerated()).compactMap { idx, port in
+                            guard outputIndexes.indices.contains(idx) else { return nil }
+                            return (outputIndexes[idx], "out", port)
+                        }
+
+                    ForEach(Array(verticalPorts.enumerated()), id: \.element.0) { stackIndex, entry in
+                        let portIndex = entry.0
+                        let side = entry.1
+                        let port = entry.2
+
+                        RackCanvasFacePort(
+                            instance: instance,
+                            portIndex: portIndex,
+                            side: side,
+                            label: port.label,
+                            signalType: port.signalType,
+                            bundleStyle: port.bundleStyle,
+                            compactFor1U: true,
+                            isNetworkSwitch: false
+                        )
+                        .position(
+                            x: geo.size.width * 0.5,
+                            y: evenlySpacedY(
+                                idx: stackIndex,
+                                total: verticalPorts.count,
+                                minY: 16,
+                                maxY: geo.size.height - 16
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func evenlySpacedX(idx: Int, total: Int, minX: CGFloat, maxX: CGFloat) -> CGFloat {
+        guard total > 0 else { return (minX + maxX) / 2 }
+        if total == 1 { return (minX + maxX) / 2 }
+
+        let usable = max(maxX - minX, 4)
+        return minX + CGFloat(idx) * usable / CGFloat(total - 1)
+    }
+
+    private func evenlySpacedY(idx: Int, total: Int, minY: CGFloat, maxY: CGFloat) -> CGFloat {
+        guard total > 0 else { return (minY + maxY) / 2 }
+        if total == 1 { return (minY + maxY) / 2 }
+
+        let usable = max(maxY - minY, 4)
+        return minY + CGFloat(idx) * usable / CGFloat(total - 1)
+    }
+}
+// MARK: - Rack Gear Slot Section
+
+private struct RackGearSlotSection: View {
+    @ObservedObject var instance: NodeInstance
+    let comp: Component
+
+    private var arrangement: RackSlotArrangement {
+        rackGearSlotArrangement(for: comp)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Expansion Slots")
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                Spacer()
+            }
+
+            switch arrangement {
+            case .horizontal:
+                VStack(spacing: 4) {
+                    ForEach(0..<comp.slotCount, id: \.self) { slotIdx in
+                        HStack(spacing: 6) {
+                            Text("S\(slotIdx + 1)")
+                                .font(.system(size: 7, weight: .medium, design: .monospaced))
+                                .foregroundColor(.secondary)
+                                .frame(width: 16, alignment: .leading)
+
+                            RackSlotCardFace(
+                                instance: instance,
+                                hostComp: comp,
+                                slotIndex: slotIdx,
+                                arrangement: arrangement
+                            )
+                            .frame(maxHeight: .infinity)
+                        }
+                        .frame(maxHeight: .infinity)
+                    }
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+
+            case .vertical:
+                HStack(spacing: 6) {
+                    ForEach(0..<comp.slotCount, id: \.self) { slotIdx in
+                        VStack(spacing: 3) {
+                            Text("S\(slotIdx + 1)")
+                                .font(.system(size: 7, weight: .medium, design: .monospaced))
+                                .foregroundColor(.secondary)
+
+                            RackSlotCardFace(
+                                instance: instance,
+                                hostComp: comp,
+                                slotIndex: slotIdx,
+                                arrangement: arrangement
+                            )
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                        .frame(maxHeight: .infinity)
+                    }
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 6)
+    }
+}
 // MARK: - Rack Gear Item
 struct RackGearItem: View {
     @ObservedObject var instance: NodeInstance
@@ -684,22 +1071,47 @@ struct RackGearItem: View {
         max(rackCapacity - max(comp.rackUnits, 1), 0)
     }
 
-    private var effectivePorts: PortInfo {
-        instance.effectivePorts ?? comp.ports
+    private var chassisPorts: PortInfo {
+        comp.ports
     }
 
-    private var effectiveInputTypes: [String] {
-        instance.effectiveInputTypes ?? comp.inputs
+    private var chassisInputTypes: [String] {
+        comp.inputs
     }
 
-    private var effectiveOutputTypes: [String] {
-        instance.effectiveOutputTypes ?? comp.outputs
+    private var chassisOutputTypes: [String] {
+        comp.outputs
     }
     
     private var useCompactNetworkPorts: Bool {
         isCompact1UNetwork
     }
+    
+    private var slotSectionHeight: CGFloat {
+        rackGearSlotSectionHeight(for: comp)
+    }
+    
+    private var chassisFaceTopInset: CGFloat {
+        headerHeight
+        + (comp.slotCount > 0 ? slotSectionHeight + 8 : 0)
+        + (isCompact1UNetwork ? 4 : 8)
+    }
 
+    private var chassisFaceRowCount: Int {
+        if comp.slotCount > 0 {
+            return 1
+        }
+        return max(comp.rackUnits - 1, 1)
+    }
+    
+    private var slottedBuiltInPortsRowY: CGFloat {
+        itemHeight - 24
+    }
+
+    private var slottedBuiltInPortsRowTop: CGFloat {
+        slottedBuiltInPortsRowY - 18
+    }
+    
     private func clampedRackSlot(for translation: CGFloat) -> Int {
         let deltaSlots = Int(round(translation / unitHeight))
         return min(max(currentRackSlot + deltaSlots, 0), maxRackSlot)
@@ -823,34 +1235,46 @@ struct RackGearItem: View {
                         }
                         .padding(.horizontal, isCompact1UNetwork ? 6 : 8)
                     }
+                    if comp.slotCount > 0 {
+                        RackGearSlotSection(instance: instance, comp: comp)
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: max(slottedBuiltInPortsRowTop - headerHeight - 8, 24),
+                                alignment: .top
+                            )
 
-                    Spacer(minLength: 0)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        Divider()
+                            .padding(.horizontal, 8)
+                            .padding(.top, 4)
+                    } else {
+                        Spacer(minLength: 0)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: itemHeight - (isCompact1UNetwork ? 10 : 4))
             .overlay {
                 GeometryReader { geo in
-                    let visualRows = max(comp.rackUnits - 1, 1)
+                    let visualRows = chassisFaceRowCount
 
                     let inputPorts = makeVisualPorts(
-                        labels: effectivePorts.inputs,
-                        signalTypes: effectiveInputTypes
+                        labels: chassisPorts.inputs,
+                        signalTypes: chassisInputTypes
                     )
                     let outputPorts = makeVisualPorts(
-                        labels: effectivePorts.outputs,
-                        signalTypes: effectiveOutputTypes
+                        labels: chassisPorts.outputs,
+                        signalTypes: chassisOutputTypes
                     )
 
                     let inputRows = rackGearRows(
                         totalPorts: inputPorts.count,
-                        rackUnits: max(comp.rackUnits, 1),
+                        rackUnits: visualRows + 1,
                         maxPortsPerRow: 8
                     )
                     let outputRows = rackGearRows(
                         totalPorts: outputPorts.count,
-                        rackUnits: max(comp.rackUnits, 1),
+                        rackUnits: visualRows + 1,
                         maxPortsPerRow: 8
                     )
 
@@ -864,15 +1288,17 @@ struct RackGearItem: View {
                         let inputRow = inputRows.indices.contains(row) ? inputRows[row] : []
                         let outputRow = outputRows.indices.contains(row) ? outputRows[row] : []
 
-                        let rowY = min(
-                            rackGearRowY(
-                                row: row,
-                                totalRows: visualRows,
-                                height: geo.size.height,
-                                headerHeight: headerHeight + (isCompact1UNetwork ? 4 : 8)
-                            ),
-                            geo.size.height - 8
-                        )
+                        let rowY = comp.slotCount > 0
+                            ? slottedBuiltInPortsRowY
+                            : min(
+                                rackGearRowY(
+                                    row: row,
+                                    totalRows: visualRows,
+                                    height: max(geo.size.height - chassisFaceTopInset, 20),
+                                    headerHeight: 0
+                                ) + chassisFaceTopInset,
+                                geo.size.height - 8
+                            )
                         
                         ForEach(Array(inputRow.enumerated()), id: \.element) { rowIndex, originalIndex in
                             let port = inputPorts[originalIndex]
@@ -884,6 +1310,7 @@ struct RackGearItem: View {
                                 label: rackFaceDisplayLabel(
                                     for: port,
                                     portIndex: originalIndex,
+                                    ports: inputPorts,
                                     inRowCount: inputRow.count,
                                     totalSideCount: inputPorts.count
                                 ),
@@ -912,8 +1339,9 @@ struct RackGearItem: View {
                                 label: rackFaceDisplayLabel(
                                     for: port,
                                     portIndex: originalIndex,
-                                    inRowCount: outputRow.count,
-                                    totalSideCount: outputPorts.count
+                                    ports: inputPorts,
+                                    inRowCount: inputRow.count,
+                                    totalSideCount: inputPorts.count
                                 ),
                                 signalType: port.signalType,
                                 bundleStyle: port.bundleStyle,
@@ -1071,6 +1499,29 @@ private extension AppState {
         s.activeTab.instances.append(contentsOf: [sw, amp])
         return s
     }
+    static var rackCanvasSlottedDeviceState: AppState {
+        let s = AppState()
+
+        // Create a rack enclosure and open its rack tab
+        let rackInst = s.addInstance(type: "rack_8u", position: CGPoint(x: 200, y: 200))
+        s.openRackTab(for: rackInst.id)
+
+        // Find a rackmount device that has expansion slots
+        guard
+            let hostComp = Components.all.values.first(where: { !$0.isRack && $0.rackUnits > 0 && $0.slotCount > 0}),
+            let slotCardComp = Components.list.first(where: { $0.isSlotCard })
+        else {
+            return s
+        }
+
+        // Add the slotted device into the rack tab
+        let hostInst = NodeInstance(type: hostComp.id, position: CGPoint(x: 0, y: 0))
+        hostInst.rackSlot = 0
+        hostInst.slotCards[0] = SlotCard(slotNumber: 0, cardType: slotCardComp.id)
+
+        s.activeTab.instances.append(hostInst)
+        return s
+    }
 }
 
 #Preview("Rack Canvas – Populated") {
@@ -1082,6 +1533,12 @@ private extension AppState {
 #Preview("Rack Canvas – Network Gear") {
     RackCanvasView()
         .environmentObject(AppState.rackCanvasNetworkState)
+        .frame(width: 860, height: 700)
+}
+
+#Preview("Rack Canvas – Slotted Device") {
+    RackCanvasView()
+        .environmentObject(AppState.rackCanvasSlottedDeviceState)
         .frame(width: 860, height: 700)
 }
 
@@ -1100,3 +1557,4 @@ private extension AppState {
         .environmentObject(AppState())
         .frame(width: 240)
 }
+

@@ -49,21 +49,27 @@ func evenPortY(idx: Int, total: Int, height: CGFloat) -> CGFloat {
 ///   - total: Total ports in the stack. Currently unused.
 ///   - height: Full node height. Currently unused.
 /// - Returns: Y position for a given port.
-func bodyPortY(idx: Int, rowCount _: Int) -> CGFloat {
-    let firstRowY = NodeView.standardTopReserved + NodeView.standardBodyTopInset
+func bodyPortY(idx: Int, rowCount _: Int, comp: Component) -> CGFloat {
+    let firstRowY =
+        NodeView.standardTopReserved
+        + standardNodeSlotOffset(for: comp)
+        + NodeView.standardBodyTopInset
+
     return firstRowY + CGFloat(idx) * NodeView.standardPortSpacing
 }
-// TODO: Fix Distance to blue headphone level thing
+
 /// Calculates standard node height
 /// - Parameter comp: Component whos ports determine height.
 /// - Returns: Total node height.
-func standardNodeHeight(for comp: Component) -> CGFloat {
+func standardNodeHeight(for instance: NodeInstance, comp: Component) -> CGFloat {
     return NodeView.standardTopReserved
-        + standardNodePortBodyHeight(for: comp)
+        + standardNodePortBodyHeight(for: instance, comp: comp)
         + standardNodeSlotSectionHeight(for: comp)
         + NodeView.standardBottomPadding
 }
-
+func standardNodeSlotOffset(for comp: Component) -> CGFloat {
+    comp.slotCount > 0 ? standardNodeSlotSectionHeight(for: comp) - 14 : 0
+}
 /// Estimated text width for layout sizing without exact text measurement.
 /// - Parameters:
 ///   - text: Text to estimate.
@@ -72,8 +78,9 @@ func standardNodeHeight(for comp: Component) -> CGFloat {
 func estimatedTextWidth(_ text: String, fontSize: CGFloat) -> CGFloat {
     CGFloat(text.count) * fontSize * 0.58
 }
-func standardNodePortBodyHeight(for comp: Component) -> CGFloat {
-    let portCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
+func standardNodePortBodyHeight(for instance: NodeInstance, comp: Component) -> CGFloat {
+    let effectivePorts = instance.effectivePorts ?? comp.ports
+    let portCount = max(effectivePorts.inputs.count, effectivePorts.outputs.count)
 
     if portCount <= 1 {
         return NodeView.standardMinBodyHeight
@@ -85,9 +92,10 @@ func standardNodePortBodyHeight(for comp: Component) -> CGFloat {
         )
     }
 }
-
 func standardNodeSlotSectionHeight(for comp: Component) -> CGFloat {
-    comp.slotCount > 0 ? CGFloat(comp.slotCount) * 22 + 20 : 0
+    comp.slotCount > 0
+        ? CGFloat(comp.slotCount) * 22 + 20
+        : 0
 }
 /// Calculates standard node width to determine if node should widen to fit port labels.
 /// - Parameter comp: Component whos port labels determine width.
@@ -109,6 +117,26 @@ func standardNodeWidth(for comp: Component) -> CGFloat {
     + (innerPadding * 2)
     
     return max(baseWidth, totalLabelWidth)
+}
+func standardNodePortBodyHeight(for comp: Component) -> CGFloat {
+    let portCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
+
+    if portCount <= 1 {
+        return NodeView.standardMinBodyHeight
+    } else {
+        let portsHeight = CGFloat(portCount - 1) * NodeView.standardPortSpacing
+        return max(
+            NodeView.standardMinBodyHeight,
+            NodeView.standardBodyTopInset + portsHeight + NodeView.standardBodyBottomInset
+        )
+    }
+}
+
+func standardNodeHeight(for comp: Component) -> CGFloat {
+    return NodeView.standardTopReserved
+        + standardNodePortBodyHeight(for: comp)
+        + standardNodeSlotSectionHeight(for: comp)
+        + NodeView.standardBottomPadding
 }
 func rackDisplayFamilyKey(signalType: String, bundleStyle: PortGroup.BundleStyle) -> String {
     let normalized = signalType
@@ -223,6 +251,12 @@ func shouldAlwaysShowRackGroups(for comp: Component) -> Bool {
         || comp.category == "Patching"
         || comp.category == "Stage Boxes"
 }
+
+func rackNodeHeight(for comp: Component) -> CGFloat {
+    NodeView.rackHeaderHeight
+        + CGFloat(comp.rackUnits) * NodeView.rackUnitHeight
+        + 3
+}
 // TODO: Add Ruleset for Intercom devices
 
 // MARK: - Constants
@@ -247,6 +281,7 @@ extension NodeView {
     static let rackUnitHeight: CGFloat = 20
     static let rackDividerHeight: CGFloat = 1
     
+    static let standardSlotTopGap: CGFloat = 6
 }
 
 // MARK: - Multichannel Ports
@@ -334,7 +369,6 @@ struct StandardNodeView: View {
                                     .wcagContrastingTextColor
                             )
                             .lineLimit(2)
-                            .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                         
                         Spacer(minLength: 0)
@@ -401,20 +435,24 @@ struct StandardNodeView: View {
             }
             .padding(.horizontal, 6)
             .padding(.top, 6)
-            .padding(.bottom, 8)
+            .padding(.bottom, 4)
 
             // Slot cards section (only shown for devices with expansion slots)
-            Spacer(minLength: standardNodePortBodyHeight(for: comp))
-
             if comp.slotCount > 0 {
                 SlotCardsSection(instance: instance, comp: comp)
                     .padding(.horizontal, 6)
                     .padding(.bottom, 4)
+
+                Divider()
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 6)
             }
+
+            Spacer(minLength: standardNodePortBodyHeight(for: instance, comp: comp))
         }
         .frame(
             width: standardNodeWidth(for: comp),
-            height: standardNodeHeight(for: comp)
+            height: standardNodeHeight(for: instance, comp: comp)
         )
         .background(
             RoundedRectangle(cornerRadius: 9)
@@ -467,7 +505,7 @@ struct StandardNodeView: View {
                     )
                     .position(
                         x: 0,
-                        y: bodyPortY(idx: idx, rowCount: rowCount)
+                        y: bodyPortY(idx: idx, rowCount: rowCount, comp: comp)
                     )
                 }
 
@@ -485,7 +523,7 @@ struct StandardNodeView: View {
                     )
                     .position(
                         x: geo.size.width,
-                        y: bodyPortY(idx: idx, rowCount: rowCount)
+                        y: bodyPortY(idx: idx, rowCount: rowCount, comp: comp)
                     )
                 }
             }
@@ -1152,20 +1190,26 @@ struct SlotCardsSection: View {
             // One row per slot
             ForEach(0..<comp.slotCount, id: \.self) { slotIdx in
                 SlotRow(
+                    instance: instance,
+                    hostComp: comp,
                     slotIndex: slotIdx,
                     card: instance.slotCards[slotIdx],
                     onAdd: { pickingSlot = slotIdx },
                     onRemove: {
+                        let removedCard = instance.slotCards[slotIdx]
                         instance.slotCards.removeValue(forKey: slotIdx)
-                        // Drop any connections that referenced the removed ports
-                        if let cardComp = Components.all[instance.slotCards[slotIdx]?.cardType ?? ""] {
-                            let basePorts = comp.ports
-                            let removedInputOffset = basePorts.inputs.count + cardComp.ports.inputs.count * slotIdx
-                            let removedOutputOffset = basePorts.outputs.count + cardComp.ports.outputs.count * slotIdx
+
+                        if let cardType = removedCard?.cardType,
+                           let cardComp = Components.all[cardType] {
+                            let effectivePorts = instance.effectivePorts ?? comp.ports
+
+                            let removedInputCount = cardComp.ports.inputs.count
+                            let removedOutputCount = cardComp.ports.outputs.count
+
                             appState.clampConnections(
                                 for: instance.id,
-                                inputCount: removedInputOffset,
-                                outputCount: removedOutputOffset
+                                inputCount: max(comp.ports.inputs.count, effectivePorts.inputs.count - removedInputCount),
+                                outputCount: max(comp.ports.outputs.count, effectivePorts.outputs.count - removedOutputCount)
                             )
                         }
                     }
@@ -1183,7 +1227,11 @@ struct SlotCardsSection: View {
     }
 }
 
+// MARK: - Slot Row
+// MARK: - Slot Row
 private struct SlotRow: View {
+    @ObservedObject var instance: NodeInstance
+    let hostComp: Component
     let slotIndex: Int
     let card: SlotCard?
     let onAdd: () -> Void
@@ -1195,39 +1243,61 @@ private struct SlotRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 6) {
             Text("S\(slotIndex + 1)")
                 .font(.system(size: 8, weight: .medium, design: .monospaced))
                 .foregroundColor(.secondary)
-                .frame(width: 16)
+                .frame(width: 18, alignment: .leading)
 
-            if let cc = cardComp {
-                Circle()
-                    .fill(Color.categoryColor(cc.category))
-                    .frame(width: 6, height: 6)
-                Text(cc.name)
-                    .font(.system(size: 9))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                Button { onRemove() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 7, weight: .bold))
-                        .foregroundColor(.secondary)
+            Group {
+                if let cc = cardComp {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.categoryColor(cc.category))
+                            .frame(width: 6, height: 6)
+
+                        Text(cc.name)
+                            .font(.system(size: 9))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+
+                        Spacer(minLength: 0)
+
+                        Button { onRemove() } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 7, weight: .bold))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 8)
+                } else {
+                    HStack(spacing: 6) {
+                        Text("Empty")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary.opacity(0.6))
+
+                        Spacer(minLength: 0)
+
+                        Button { onAdd() } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 9))
+                                .foregroundColor(.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 8)
                 }
-                .buttonStyle(.plain)
-            } else {
-                Text("Empty")
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary.opacity(0.6))
-                Spacer(minLength: 0)
-                Button { onAdd() } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 9))
-                        .foregroundColor(.accentColor)
-                }
-                .buttonStyle(.plain)
             }
+            .frame(maxWidth: .infinity, minHeight: 22, maxHeight: 22)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            )
         }
         .frame(height: 22)
     }
@@ -1284,13 +1354,12 @@ private struct SlotCardPickerSheet: View {
     }
 }
 
-// MARK: - Rack Node
 // MARK: - Rack Node Header Height Preference
 private struct RackHeaderHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 31
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
-
+// MARK: - Rack Node View
 struct RackNodeView: View {
     @ObservedObject var instance: NodeInstance
     let comp: Component

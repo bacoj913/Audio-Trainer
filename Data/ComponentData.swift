@@ -857,16 +857,21 @@ enum Components {
                 manufacturer: "DiGiCo",
                 model: "SD-Rack 32ch",
             inputGroups: [
-                PortGroup(connector: "XLR", count: 32, signalType: "mic")
+                PortGroup(connector: "HMA", count: 1, signalType: "optical"),
+                PortGroup(connector: "MADI BNC", count: 1, signalType: "madi"),
+                PortGroup(connector: "MADI AUX", count: 1, signalType: "madi"),
+                PortGroup(connector: "Word Clock", count: 1, signalType:"clock")
             ],
             outputGroups: [
-                PortGroup(connector: "XLR", count: 16, signalType: "line"),
+                PortGroup(connector: "HMA", count: 1, signalType: "optical"),
                 PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
-                PortGroup(connector: "Optics", count: 1, signalType: "optical")
+                PortGroup(connector: "MADI AUX", count: 2, signalType: "madi"),
+                PortGroup(connector: "Word Clock", count: 1, signalType: "clock")
             ],
-            desc: "32-in/16-out SD-Rack, MADI + optical",
-            level: "Analog → MADI",
-            rackUnits: 5),
+            desc: "SD-Rack, MADI + optical",
+            level: "Analog → Digital",
+            rackUnits: 5,
+            slotCount: 8),
 
         Component(id: "stagebox_40",
             name: "Yamaha Rio6432-D2 (40ch)",

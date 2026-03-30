@@ -247,6 +247,7 @@ extension Color {
         case "milan":      return Color(.systemGreen)
         case "rf":         return Color(.systemBlue)
         case "power":      return Color(.systemYellow)
+        case "clock":      return Color(.systemMint)
         default:           return Color(.systemGray)
         }
     }

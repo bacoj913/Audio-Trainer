@@ -331,8 +331,17 @@ struct ConnectionShape: Shape {
 /// during drag cause this view — and its .position() modifier — to re-render.
 /// CanvasView only observes AppState, not individual NodeInstances, so without this
 /// wrapper the .position() modifier would never update when instance.position changes.
+// MARK: - Positioned Node View
+/// Wraps NodeView and observes the NodeInstance directly so that position changes
+/// during drag cause this view — and its .position() modifier — to re-render.
+/// CanvasView only observes AppState, not individual NodeInstances, so without this
+/// wrapper the .position() modifier would never update when instance.position changes.
 private struct PositionedNodeView: View {
     @ObservedObject var instance: NodeInstance
+
+    private var comp: Component {
+        Components.all[instance.type] ?? .placeholder
+    }
 
     var body: some View {
         NodeView(instance: instance)
@@ -343,17 +352,21 @@ private struct PositionedNodeView: View {
     }
 
     private var halfWidth: CGFloat {
-        let comp = Components.all[instance.type]
-        return comp?.isRack == true ? 100 : NodeView.width / 2
+        if comp.isRack {
+            return NodeView.rackWidth / 2
+        } else {
+            return standardNodeWidth(for: comp) / 2
+        }
     }
 
     private var halfHeight: CGFloat {
-        guard let comp = Components.all[instance.type] else { return 30 }
-        if comp.isRack { return 30 }
-        return standardNodeHeight(for: comp) / 2
+        if comp.isRack {
+            return rackNodeHeight(for: comp) / 2
+        } else {
+            return standardNodeHeight(for: instance, comp: comp) / 2
+        }
     }
 }
-
 // MARK: - Previews
 
 private extension AppState {
