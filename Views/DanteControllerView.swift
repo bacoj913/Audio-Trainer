@@ -43,8 +43,9 @@ struct DanteControllerView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
             }
+            
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10.5)
             .background(.ultraThinMaterial)
             .overlay(Divider(), alignment: .bottom)
 
