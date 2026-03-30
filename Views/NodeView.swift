@@ -58,29 +58,12 @@ func bodyPortY(idx: Int, rowCount _: Int) -> CGFloat {
 /// - Parameter comp: Component whos ports determine height.
 /// - Returns: Total node height.
 func standardNodeHeight(for comp: Component) -> CGFloat {
-    let portCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
-
-    let bodyHeight: CGFloat
-    if portCount <= 1 {
-        bodyHeight = NodeView.standardMinBodyHeight
-    } else {
-        let portsHeight = CGFloat(portCount - 1) * NodeView.standardPortSpacing
-        bodyHeight = max(
-            NodeView.standardMinBodyHeight,
-            NodeView.standardBodyTopInset + portsHeight + NodeView.standardBodyBottomInset
-        )
-    }
-
-    // Reserve 22pt per slot row + 20pt for section header when device has expansion slots
-    let slotSectionHeight: CGFloat = comp.slotCount > 0
-        ? CGFloat(comp.slotCount) * 22 + 20
-        : 0
-
     return NodeView.standardTopReserved
-        + bodyHeight
-        + slotSectionHeight
+        + standardNodePortBodyHeight(for: comp)
+        + standardNodeSlotSectionHeight(for: comp)
         + NodeView.standardBottomPadding
 }
+
 /// Estimated text width for layout sizing without exact text measurement.
 /// - Parameters:
 ///   - text: Text to estimate.
@@ -89,7 +72,23 @@ func standardNodeHeight(for comp: Component) -> CGFloat {
 func estimatedTextWidth(_ text: String, fontSize: CGFloat) -> CGFloat {
     CGFloat(text.count) * fontSize * 0.58
 }
+func standardNodePortBodyHeight(for comp: Component) -> CGFloat {
+    let portCount = max(comp.ports.inputs.count, comp.ports.outputs.count)
 
+    if portCount <= 1 {
+        return NodeView.standardMinBodyHeight
+    } else {
+        let portsHeight = CGFloat(portCount - 1) * NodeView.standardPortSpacing
+        return max(
+            NodeView.standardMinBodyHeight,
+            NodeView.standardBodyTopInset + portsHeight + NodeView.standardBodyBottomInset
+        )
+    }
+}
+
+func standardNodeSlotSectionHeight(for comp: Component) -> CGFloat {
+    comp.slotCount > 0 ? CGFloat(comp.slotCount) * 22 + 20 : 0
+}
 /// Calculates standard node width to determine if node should widen to fit port labels.
 /// - Parameter comp: Component whos port labels determine width.
 /// - Returns: Node width.
@@ -405,13 +404,13 @@ struct StandardNodeView: View {
             .padding(.bottom, 8)
 
             // Slot cards section (only shown for devices with expansion slots)
+            Spacer(minLength: standardNodePortBodyHeight(for: comp))
+
             if comp.slotCount > 0 {
                 SlotCardsSection(instance: instance, comp: comp)
                     .padding(.horizontal, 6)
                     .padding(.bottom, 4)
             }
-
-            Spacer(minLength: 0)
         }
         .frame(
             width: standardNodeWidth(for: comp),
@@ -1667,8 +1666,41 @@ extension AppState {
         }
         return state
     }
-}
+    fileprivate static var slottedStandardNodePreviewState: AppState {
+        let state = AppState()
 
+        guard
+            let hostComp = Components.all.values.first(where: { !$0.isRack && $0.slotCount > 0 }),
+            let slotCardComp = Components.list.first(where: { $0.isSlotCard })
+        else {
+            return state
+        }
+
+        state.addInstance(type: hostComp.id, position: CGPoint(x: 120, y: 120))
+
+        if let instance = state.instances.first {
+            instance.slotCards[0] = SlotCard(slotNumber: 0, cardType: slotCardComp.id)
+        }
+
+        return state
+    }
+}
+#Preview("StandardNodeView - Slotted") {
+    Group {
+        let state = AppState.slottedStandardNodePreviewState
+        if let instance = state.instances.first {
+            let comp = Components.all[instance.type] ?? .placeholder
+            StandardNodeView(instance: instance, comp: comp)
+                .environmentObject(state)
+                .padding()
+                .fixedSize()
+                .coordinateSpace(name: "canvas")
+        } else {
+            Text("No slotted standard component available for preview")
+                .padding()
+        }
+    }
+}
 #Preview("NodeView - Standard") {
     Group {
         if let instance = AppState.standardNodePreviewState.instances.first {
