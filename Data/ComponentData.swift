@@ -871,7 +871,7 @@ enum Components {
             desc: "SD-Rack, MADI + optical",
             level: "Analog → Digital",
             rackUnits: 5,
-            slotCount: 8),
+            slotCount: 14),
 
         Component(id: "stagebox_40",
             name: "Yamaha Rio6432-D2 (40ch)",
