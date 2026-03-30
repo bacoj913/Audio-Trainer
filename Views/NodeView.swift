@@ -1228,7 +1228,6 @@ struct SlotCardsSection: View {
 }
 
 // MARK: - Slot Row
-// MARK: - Slot Row
 private struct SlotRow: View {
     @ObservedObject var instance: NodeInstance
     let hostComp: Component
