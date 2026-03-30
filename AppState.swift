@@ -16,6 +16,23 @@ struct IOConfig: Equatable {
     var outputSignalType: String = "line"
 }
 
+// MARK: - Dante Flow
+struct DanteFlow: Identifiable, Codable {
+    let id: UUID
+    var fromDeviceId: UUID
+    var fromPortIndex: Int
+    var toDeviceId: UUID
+    var toPortIndex: Int
+
+    init(id: UUID = UUID(), fromDeviceId: UUID, fromPortIndex: Int, toDeviceId: UUID, toPortIndex: Int) {
+        self.id = id
+        self.fromDeviceId = fromDeviceId
+        self.fromPortIndex = fromPortIndex
+        self.toDeviceId = toDeviceId
+        self.toPortIndex = toPortIndex
+    }
+}
+
 // MARK: - Node Instance
 class NodeInstance: ObservableObject, Identifiable {
     let id: UUID
@@ -26,6 +43,8 @@ class NodeInstance: ObservableObject, Identifiable {
     @Published var ipAddress: String? = nil    // device IP address (for network-capable devices)
     @Published var portVlanTags: [Int: Int] = [:]  // port index → VLAN ID (0 = untagged) for network switches
     @Published var selectedPreset: String? = nil   // selected Lake module preset (for amps/processors)
+    @Published var slotCards: [Int: SlotCard] = [:]   // slot index → inserted card
+    @Published var danteDeviceName: String? = nil     // user-assigned Dante device name
 
     init(id: UUID = UUID(), type: String, position: CGPoint) {
         self.id = id
@@ -33,22 +52,68 @@ class NodeInstance: ObservableObject, Identifiable {
         self.position = position
     }
 
-    // MARK: - Effective port helpers (override component defaults when ioConfig is set)
+    // MARK: - Effective port helpers
+    // Returns nil when no overrides exist (callers fall back to comp.ports / comp.inputs / comp.outputs).
+    // Returns a merged PortInfo when ioConfig OR slot cards are present.
+
     var effectivePorts: PortInfo? {
-        guard let cfg = ioConfig else { return nil }
-        let inLabels  = (1...max(1, cfg.inputCount)).map  { "\(cfg.inputSignalType.capitalized) In \($0)" }
-        let outLabels = (1...max(1, cfg.outputCount)).map { "\(cfg.outputSignalType.capitalized) Out \($0)" }
-        return PortInfo(inputs: inLabels, outputs: outLabels)
+        if let cfg = ioConfig {
+            let inLabels  = (1...max(1, cfg.inputCount)).map  { "\(cfg.inputSignalType.capitalized) In \($0)" }
+            let outLabels = (1...max(1, cfg.outputCount)).map { "\(cfg.outputSignalType.capitalized) Out \($0)" }
+            return PortInfo(inputs: inLabels, outputs: outLabels)
+        }
+        return slotCardMergedPorts()
     }
 
     var effectiveInputTypes: [String]? {
-        guard let cfg = ioConfig else { return nil }
-        return Array(repeating: cfg.inputSignalType, count: cfg.inputCount)
+        if let cfg = ioConfig {
+            return Array(repeating: cfg.inputSignalType, count: cfg.inputCount)
+        }
+        return slotCardMergedInputTypes()
     }
 
     var effectiveOutputTypes: [String]? {
-        guard let cfg = ioConfig else { return nil }
-        return Array(repeating: cfg.outputSignalType, count: cfg.outputCount)
+        if let cfg = ioConfig {
+            return Array(repeating: cfg.outputSignalType, count: cfg.outputCount)
+        }
+        return slotCardMergedOutputTypes()
+    }
+
+    // Merge base component ports with any installed slot cards. Returns nil when no cards present.
+    private func slotCardMergedPorts() -> PortInfo? {
+        guard !slotCards.isEmpty,
+              let baseComp = Components.all[type] else { return nil }
+        var allInputs  = baseComp.ports.inputs
+        var allOutputs = baseComp.ports.outputs
+        for card in slotCards.values.sorted(by: { $0.slotNumber < $1.slotNumber }) {
+            guard let cardComp = Components.all[card.cardType] else { continue }
+            let prefix = "Slot \(card.slotNumber + 1)"
+            allInputs.append(contentsOf:  cardComp.ports.inputs.map  { "\(prefix): \($0)" })
+            allOutputs.append(contentsOf: cardComp.ports.outputs.map { "\(prefix): \($0)" })
+        }
+        return PortInfo(inputs: allInputs, outputs: allOutputs)
+    }
+
+    private func slotCardMergedInputTypes() -> [String]? {
+        guard !slotCards.isEmpty,
+              let baseComp = Components.all[type] else { return nil }
+        var types = baseComp.inputs
+        for card in slotCards.values.sorted(by: { $0.slotNumber < $1.slotNumber }) {
+            guard let cardComp = Components.all[card.cardType] else { continue }
+            types.append(contentsOf: cardComp.inputs)
+        }
+        return types
+    }
+
+    private func slotCardMergedOutputTypes() -> [String]? {
+        guard !slotCards.isEmpty,
+              let baseComp = Components.all[type] else { return nil }
+        var types = baseComp.outputs
+        for card in slotCards.values.sorted(by: { $0.slotNumber < $1.slotNumber }) {
+            guard let cardComp = Components.all[card.cardType] else { continue }
+            types.append(contentsOf: cardComp.outputs)
+        }
+        return types
     }
 }
 
@@ -127,6 +192,11 @@ class AppState: ObservableObject {
     @Published var canvasScale: CGFloat = 1.0
     @Published var canvasOffset: CGSize = .zero
     @Published var crossTabConnections: [NodeConnection] = []
+
+    /// Dante routing flows (device-level subscriptions independent of canvas connections).
+    @Published var danteFlows: [DanteFlow] = []
+    /// When true the Dante Controller view replaces the canvas area.
+    @Published var isDanteControllerActive: Bool = false
 
     /// User-saved rack templates shown in the "My Equipment" sidebar category.
     @Published var userRacks: [UserRack] = []
@@ -259,6 +329,30 @@ class AppState: ObservableObject {
             }
         }
         return nil
+    }
+
+    /// All instances across every tab that have at least one Dante/Milan/AES67/AVB/Network port.
+    var allNetworkInstances: [(inst: NodeInstance, comp: Component)] {
+        tabs.flatMap { tab in
+            tab.instances.compactMap { inst -> (NodeInstance, Component)? in
+                guard let comp = Components.all[inst.type], comp.hasNetworkIP else { return nil }
+                return (inst, comp)
+            }
+        }
+    }
+
+    // MARK: - Dante Flows
+    func addDanteFlow(fromDeviceId: UUID, fromPortIndex: Int, toDeviceId: UUID, toPortIndex: Int) {
+        guard !danteFlows.contains(where: {
+            $0.fromDeviceId == fromDeviceId && $0.fromPortIndex == fromPortIndex &&
+            $0.toDeviceId == toDeviceId && $0.toPortIndex == toPortIndex
+        }) else { return }
+        danteFlows.append(DanteFlow(fromDeviceId: fromDeviceId, fromPortIndex: fromPortIndex,
+                                    toDeviceId: toDeviceId, toPortIndex: toPortIndex))
+    }
+
+    func removeDanteFlow(id: UUID) {
+        danteFlows.removeAll { $0.id == id }
     }
 
     // MARK: - Connections
@@ -463,7 +557,11 @@ class AppState: ObservableObject {
                         },
                         ipAddress: inst.ipAddress,
                         portVlanTags: inst.portVlanTags.isEmpty ? nil : inst.portVlanTags,
-                        selectedPreset: inst.selectedPreset
+                        selectedPreset: inst.selectedPreset,
+                        slotCards: inst.slotCards.isEmpty ? nil : inst.slotCards.mapValues {
+                            SavedSlotCard(id: $0.id, slotNumber: $0.slotNumber, cardType: $0.cardType)
+                        },
+                        danteDeviceName: inst.danteDeviceName
                     )
                 },
                 connections: tab.connections.map {
@@ -476,7 +574,11 @@ class AppState: ObservableObject {
             SavedConnection(id: $0.id, fromId: $0.fromId, fromPortIndex: $0.fromPortIndex,
                            toId: $0.toId, toPortIndex: $0.toPortIndex)
         }
-        return SavedProject(tabs: savedTabs, crossTabConnections: savedCross)
+        let savedFlows = danteFlows.map {
+            SavedDanteFlow(id: $0.id, fromDeviceId: $0.fromDeviceId, fromPortIndex: $0.fromPortIndex,
+                           toDeviceId: $0.toDeviceId, toPortIndex: $0.toPortIndex)
+        }
+        return SavedProject(tabs: savedTabs, crossTabConnections: savedCross, danteFlows: savedFlows)
     }
 
     /// Replace the entire canvas state with a loaded project snapshot.
@@ -499,6 +601,12 @@ class AppState: ObservableObject {
                 inst.ipAddress = si.ipAddress
                 if let tags = si.portVlanTags { inst.portVlanTags = tags }
                 inst.selectedPreset = si.selectedPreset
+                if let cards = si.slotCards {
+                    inst.slotCards = cards.mapValues {
+                        SlotCard(id: $0.id, slotNumber: $0.slotNumber, cardType: $0.cardType)
+                    }
+                }
+                inst.danteDeviceName = si.danteDeviceName
                 tab.instances.append(inst)
             }
             for sc in savedTab.connections {
@@ -516,6 +624,11 @@ class AppState: ObservableObject {
             NodeConnection(id: $0.id, fromId: $0.fromId, fromPortIndex: $0.fromPortIndex,
                            toId: $0.toId, toPortIndex: $0.toPortIndex)
         }
+        danteFlows = (project.danteFlows ?? []).map {
+            DanteFlow(id: $0.id, fromDeviceId: $0.fromDeviceId, fromPortIndex: $0.fromPortIndex,
+                      toDeviceId: $0.toDeviceId, toPortIndex: $0.toPortIndex)
+        }
+        isDanteControllerActive = false
         canvasScale = 1.0
         canvasOffset = .zero
     }
@@ -524,6 +637,8 @@ class AppState: ObservableObject {
         currentProjectURL = nil
         connectingFromId = nil
         crossTabConnections = []
+        danteFlows = []
+        isDanteControllerActive = false
         tabs = [CanvasTab(name: "Main")]
         activeTabIndex = 0
         observeActiveTab()
@@ -623,6 +738,12 @@ class AppState: ObservableObject {
             inst.ipAddress = si.ipAddress
             if let tags = si.portVlanTags { inst.portVlanTags = tags }
             inst.selectedPreset = si.selectedPreset
+            if let cards = si.slotCards {
+                inst.slotCards = cards.mapValues {
+                    SlotCard(id: $0.id, slotNumber: $0.slotNumber, cardType: $0.cardType)
+                }
+            }
+            inst.danteDeviceName = si.danteDeviceName
             rackTab.instances.append(inst)
         }
         for sc in userRack.connections {

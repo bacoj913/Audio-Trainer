@@ -208,7 +208,8 @@ enum Components {
                 PortGroup(connector: "AES", count: 1, signalType: "aes")
             ],
             desc: "Digital mixing console, 72-ch I/O",
-            level: "Line Level"),
+            level: "Line Level",
+            slotCount: 4),
 
         Component(id: "mixer_yamaha",
             name: "Yamaha PM7",
@@ -226,7 +227,8 @@ enum Components {
                 PortGroup(connector: "MADI", count: 1, signalType: "madi")
             ],
             desc: "Digital mixing console, Dante/MADI",
-            level: "Line Level"),
+            level: "Line Level",
+            slotCount: 4),
 
         Component(id: "mixer_ssl",
             name: "SSL Live L550",
@@ -244,7 +246,8 @@ enum Components {
                 PortGroup(connector: "MADI", count: 2, signalType: "madi")
             ],
             desc: "SSL digital live console",
-            level: "Line Level"),
+            level: "Line Level",
+            slotCount: 2),
 
         Component(id: "patch_bay",
             name: "Neutrik NYS-SPP-L Patchbay",
@@ -1003,6 +1006,71 @@ enum Components {
             rackUnits: 1),
         // ── Intercom ─────────────────────────────────────────
         // TODO: Add Intercom Devices
+
+        // ── Expansion Cards ───────────────────────────────────
+        Component(id: "card_dante_64",
+            name: "Dante 64-ch Card",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Generic",
+                model: "Dante 64",
+            inputGroups: [
+                PortGroup(connector: "Dante", count: 1, signalType: "dante")
+            ],
+            outputGroups: [
+                PortGroup(connector: "Dante", count: 1, signalType: "dante")
+            ],
+            desc: "64-channel Dante expansion card",
+            level: "Network Audio",
+            isSlotCard: true),
+
+        Component(id: "card_madi_64",
+            name: "MADI 64-ch Card",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Generic",
+                model: "MADI 64",
+            inputGroups: [
+                PortGroup(connector: "MADI", count: 1, signalType: "madi")
+            ],
+            outputGroups: [
+                PortGroup(connector: "MADI", count: 1, signalType: "madi")
+            ],
+            desc: "64-channel MADI expansion card",
+            level: "Digital",
+            isSlotCard: true),
+
+        Component(id: "card_aes_8",
+            name: "AES/EBU 8-pair Card",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Generic",
+                model: "AES 16",
+            inputGroups: [
+                PortGroup(connector: "AES", count: 8, signalType: "aes")
+            ],
+            outputGroups: [
+                PortGroup(connector: "AES", count: 8, signalType: "aes")
+            ],
+            desc: "8-pair AES/EBU (16-channel) expansion card",
+            level: "Digital",
+            isSlotCard: true),
+
+        Component(id: "card_analog_8",
+            name: "Analog 8-ch Card",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Generic",
+                model: "Analog 8",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 8, signalType: "line")
+            ],
+            outputGroups: [
+                PortGroup(connector: "XLR", count: 8, signalType: "line")
+            ],
+            desc: "8-channel analog XLR expansion card",
+            level: "Line Level",
+            isSlotCard: true),
     ]
 }
 #if DEBUG

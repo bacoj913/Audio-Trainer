@@ -176,14 +176,15 @@ struct AppBodyView: View {
                     SidebarView()
                         .frame(width: 210)
                     Divider()
-                    // Canvas area: tab bar + canvas/rack view
+                    // Canvas area: tab bar + canvas/rack/dante view
                     VStack(spacing: 0) {
-                        // Only show tab bar when there are multiple tabs
-                        if appState.tabs.count > 1 {
-                            CanvasTabBar()
-                        }
-                        // Show rack canvas or main canvas based on active tab
-                        if appState.activeTab.parentRackInstanceId != nil {
+                        // Always show tab bar so Dante tab is always reachable
+                        CanvasTabBar()
+                        // Route to the right view
+                        if appState.isDanteControllerActive {
+                            DanteControllerView()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if appState.activeTab.parentRackInstanceId != nil {
                             RackCanvasView()
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {

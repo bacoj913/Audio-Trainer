@@ -144,7 +144,9 @@ extension Component {
         isRack: Bool = false,
         rackUnits: Int = 0,
         comingSoon: Bool = false,
-        availablePresets: [String] = []
+        availablePresets: [String] = [],
+        slotCount: Int = 0,
+        isSlotCard: Bool = false
     ) {
         self.init(
             id: id,
@@ -161,10 +163,26 @@ extension Component {
             isRack: isRack,
             rackUnits: rackUnits,
             comingSoon: comingSoon,
-            availablePresets: availablePresets
+            availablePresets: availablePresets,
+            slotCount: slotCount,
+            isSlotCard: isSlotCard
         )
     }
 }
+// MARK: - Slot Card
+/// A named expansion card inserted into a numbered slot on a parent device.
+struct SlotCard: Identifiable, Codable {
+    let id: UUID
+    var slotNumber: Int   // 0-based slot index
+    var cardType: String  // component ID of the inserted card
+
+    init(id: UUID = UUID(), slotNumber: Int, cardType: String) {
+        self.id = id
+        self.slotNumber = slotNumber
+        self.cardType = cardType
+    }
+}
+
 // MARK: - Component
 struct Component {
     let id: String
@@ -182,6 +200,8 @@ struct Component {
     var rackUnits: Int = 0
     var comingSoon: Bool = false
     var availablePresets: [String] = []   // e.g. Lake module names for amps/processors
+    var slotCount: Int = 0                // number of expansion card slots (0 = none)
+    var isSlotCard: Bool = false          // true when this component IS an expansion card
 
     /// True for any device that participates in a network (dante, milan, aes67, avb, or plain "network" signal type).
     var hasNetworkIP: Bool {
@@ -202,7 +222,8 @@ struct Component {
 let categoryOrder: [String] = [
     "Sources", "Processing", "Patching", "Consoles",
     "Amplifiers", "Wireless Mics", "Wireless IEMs", "Antennas",
-    "Networking", "Stage Racks", "Stage Boxes", "Racks", "Speakers", "Power", "Intercom"
+    "Networking", "Stage Racks", "Stage Boxes", "Racks", "Speakers", "Power", "Intercom",
+    "Expansion Cards"
 ]
 
 // MARK: - Signal type colors (for port dots and connection wires)
