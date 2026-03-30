@@ -340,7 +340,33 @@ enum Components {
             ],
             desc: "8-ch touring amplifier, AES67 network",
             level: "Speaker Level",
-            rackUnits: 2),
+            rackUnits: 2,
+            availablePresets: [
+                "PA Top Module", "PA Sub Module", "Fill Module", "Delay Module",
+                "Front Fill Module", "Side Fill Module", "Monitor Module", "Drum Fill Module"
+            ]),
+
+        Component(id: "power_amp_labgruppen_plm20k44_bp",
+            name: "Lab.gruppen PLM 20K44 BP",
+                iconName: "power_amp",
+            category: "Amplifiers",
+                manufacturer: "Lab.gruppen",
+                model: "PLM 20K44 BP",
+            inputGroups: [
+                PortGroup(connector: "Analog XLR", count: 4, signalType: "line"),
+                PortGroup(connector: "AES", count: 2, signalType: "aes"),
+                PortGroup(connector: "etherCON", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            outputGroups: [
+                PortGroup(connector: "Binding Post", count: 4, signalType: "speaker")
+            ],
+            desc: "20,000W 4-channel powered loudspeaker management amplifier with analog, AES3, and Dante inputs",
+            level: "Speaker Level",
+            rackUnits: 2,
+            availablePresets: [
+                "PA Top Module", "PA Sub Module", "Fill Module", "Delay Module",
+                "Front Fill Module", "Side Fill Module", "Monitor Module", "Drum Fill Module"
+            ]),
 
         // ── Speaker ──────────────────────────────────────────
         Component(id: "speakers",

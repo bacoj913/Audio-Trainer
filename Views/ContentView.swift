@@ -102,7 +102,7 @@ struct ToolbarBarView: View {
             ToolbarButton(icon: "trash", label: "Clear") {
                 appState.clearCanvas()
             }
-            ToolbarButton(icon: "square.grid.3x3", label: "Arrange") {
+            ToolbarButton(icon: "square.grid.3x3", label: "Clean Up") {
                 appState.autoLayout()
             }
             ToolbarButton(icon: "arrow.up.left.and.arrow.down.right", label: "Reset Zoom") {
