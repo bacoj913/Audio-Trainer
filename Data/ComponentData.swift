@@ -163,11 +163,11 @@ enum Components {
                 manufacturer: "TC Electronic",
                 model: "M6000",
             inputGroups: [
-                PortGroup(connector: "AES", count: 8, signalType: "aes"),
+                PortGroup(connector: "AES", count: 4, signalType: "aes"),
                 PortGroup(connector: "Analog", count: 6, signalType: "line")
             ],
             outputGroups: [
-                PortGroup(connector: "AES", count: 8, signalType: "aes"),
+                PortGroup(connector: "AES", count: 4, signalType: "aes"),
                 PortGroup(connector: "Analog", count: 6, signalType: "line")
             ],
             desc: "Reverb, delay, and multi-effects engine",
@@ -563,7 +563,7 @@ enum Components {
                 model: "SR IEM G4",
             inputGroups: [
                 PortGroup(connector: "XLR/TRS Combo", count: 2, signalType: "line"),
-                PortGroup(connector: "Ethernet RJ45", count: 1, signalType: "dante")
+                PortGroup(connector: "Ethernet RJ45", count: 1, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
             ],
             outputGroups: [
                 PortGroup(connector: "Antenna BNC", count: 1, signalType: "rf")
@@ -1021,7 +1021,7 @@ enum Components {
                 PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
             ],
             outputGroups: [
-                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante")
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
             ],
             desc: "64x64 Dante DMI card for DiGiCo consoles and Orange Box",
             level: "Network Audio",
@@ -1050,10 +1050,10 @@ enum Components {
                 manufacturer: "DiGiCo",
                 model: "DMI-AES",
             inputGroups: [
-                PortGroup(connector: "AES DB25", count: 8, signalType: "aes")
+                PortGroup(connector: "AES DB25", count: 2, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel)
             ],
             outputGroups: [
-                PortGroup(connector: "AES DB25", count: 8, signalType: "aes")
+                PortGroup(connector: "AES DB25", count: 2, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel)
             ],
             desc: "16x16 AES DMI card with SRC on all inputs",
             level: "Digital",
@@ -1186,10 +1186,10 @@ enum Components {
                 manufacturer: "Yamaha",
                 model: "MY8-AE96S",
             inputGroups: [
-                PortGroup(connector: "AES DB25", count: 4, signalType: "aes")
+                PortGroup(connector: "AES DB25", count: 1, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel)
             ],
             outputGroups: [
-                PortGroup(connector: "AES DB25", count: 4, signalType: "aes")
+                PortGroup(connector: "AES DB25", count: 1, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel)
             ],
             desc: "8x8 AES/EBU mini-YGDAI card with input SRC",
             level: "Digital",
@@ -1230,16 +1230,17 @@ enum Components {
                 manufacturer: "Yamaha",
                 model: "RY16-AE",
             inputGroups: [
-                PortGroup(connector: "AES DB25", count: 2, signalType: "aes")
+                PortGroup(connector: "AES DB25", count: 2, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel)
             ],
             outputGroups: [
-                PortGroup(connector: "AES DB25", count: 2, signalType: "aes")
+                PortGroup(connector: "AES DB25", count: 2, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel)
             ],
             desc: "16x16 AES/EBU RY card",
             level: "Digital",
             isSlotCard: true),
     ]
 }
+
 #if DEBUG
 import SwiftUI
 
