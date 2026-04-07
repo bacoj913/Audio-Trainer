@@ -312,6 +312,8 @@ func makeVisualPorts(labels: [String], signalTypes: [String]) -> [VisualPort] {
             bundleStyle = .multichannel
         case "dante", "aes67", "milan", "avb", "network":
             bundleStyle = .network
+        case "bindingpost":
+            bundleStyle = .bindingPost
         default:
             bundleStyle = .single
         }
@@ -558,6 +560,9 @@ struct PortEdgeDot: View {
     var signalType: String = "line"
     var bundleStyle: PortGroup.BundleStyle = .single
     @EnvironmentObject var appState: AppState
+
+    @State private var showingBindingPostPicker = false
+    @State private var lastBananaOrientation: String? = nil
     
     private var color: Color { Color.signalTypeColor(signalType) }
     
@@ -627,7 +632,40 @@ struct PortEdgeDot: View {
                 )
             }
         )
+        .popover(isPresented: $showingBindingPostPicker,
+                 arrowEdge: side == "in" ? .leading : .trailing) {
+            BananaOrientationPicker(
+                instance: instance,
+                portIndex: portIndex,
+                side: side,
+                onSelect: { orientation in
+                    showingBindingPostPicker = false
+                    lastBananaOrientation = orientation
+                    // Persist the chosen orientation on the instance for validation
+                    instance.bananaOrientations[portIndex] = orientation
+                    if side == "out" {
+                        appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
+                    } else if isConnecting {
+                        appState.finishConnecting(toId: instance.id, toPortIndex: portIndex)
+                    }
+                }
+            )
+            .environmentObject(appState)
+        }
         .onTapGesture {
+            // Binding post ports in exercise mode show the orientation picker first.
+            if bundleStyle == .bindingPost && appState.mode == .exercise {
+                if side == "out" && !isConnecting {
+                    showingBindingPostPicker = true
+                } else if side == "out" && isSource {
+                    appState.cancelConnecting()
+                } else if side == "in" && isConnecting {
+                    showingBindingPostPicker = true
+                } else if side == "in" && isConnected {
+                    appState.disconnectInput(instanceId: instance.id, portIndex: portIndex)
+                }
+                return
+            }
             if side == "out" {
                 if !isConnecting {
                     appState.startConnecting(
@@ -701,6 +739,101 @@ struct PortEdgeDot: View {
                 )
             }
         )
+    }
+}
+
+// MARK: - Banana Orientation Picker
+/// Popover shown in exercise mode when the user taps a binding post port.
+/// Asks which direction the banana jack ground tab faces.
+struct BananaOrientationPicker: View {
+    @ObservedObject var instance: NodeInstance
+    let portIndex: Int
+    let side: String
+    let onSelect: (String) -> Void
+
+    @EnvironmentObject var appState: AppState
+
+    private var comp: Component? { Components.all[instance.type] }
+
+    private var expectedOrientation: String? {
+        guard let preset = instance.selectedPreset,
+              let comp else { return nil }
+        return comp.presetBananaOrientations[preset]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Banana Jack Orientation")
+                .font(.system(size: 13, weight: .semibold))
+
+            if let preset = instance.selectedPreset {
+                Text("Module: **\(preset)**")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            Text("Which direction is the ground tab?")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+
+            VStack(spacing: 8) {
+                ForEach(["left", "right"], id: \.self) { orientation in
+                    Button {
+                        onSelect(orientation)
+                    } label: {
+                        HStack(spacing: 10) {
+                            // Mini binding-post diagram
+                            HStack(spacing: 0) {
+                                if orientation == "left" {
+                                    Text("GND")
+                                        .font(.system(size: 7, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 22, height: 14)
+                                        .background(Color.black)
+                                    Text("+")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 22, height: 14)
+                                        .background(Color.red)
+                                } else {
+                                    Text("+")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 22, height: 14)
+                                        .background(Color.red)
+                                    Text("GND")
+                                        .font(.system(size: 7, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 22, height: 14)
+                                        .background(Color.black)
+                                }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                            .overlay(RoundedRectangle(cornerRadius: 3)
+                                .stroke(Color.primary.opacity(0.2), lineWidth: 1))
+
+                            Text("Ground tab \(orientation)")
+                                .font(.system(size: 11))
+                            Spacer()
+
+                            if let expected = expectedOrientation {
+                                Image(systemName: orientation == expected
+                                      ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .foregroundColor(orientation == expected ? .green : .red)
+                                    .font(.system(size: 13))
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.primary.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .frame(width: 240)
     }
 }
 
@@ -1044,6 +1177,34 @@ struct PortGlyph: View {
                             .foregroundColor(.white)
                     }
                 }
+
+        case .bindingPost:
+            // Half-black (ground/negative), half-red (positive) banana jack post.
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.black)
+                    .frame(width: 7, height: 10)
+                Rectangle()
+                    .fill(Color.red)
+                    .frame(width: 7, height: 10)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .overlay(
+                RoundedRectangle(cornerRadius: 3)
+                    .stroke(Color.white, lineWidth: 1)
+            )
+            .overlay {
+                if showDisconnectMark {
+                    Image(systemName: "xmark")
+                        .font(
+                            .system(
+                                size: NodeView.portXMarkSize,
+                                weight: .black
+                            )
+                        )
+                        .foregroundColor(.white)
+                }
+            }
         }
     }
 }

@@ -427,6 +427,196 @@ let rfAccessories: [RFListItem] = [
 
 // MARK: - Generator helpers
 func rfPick<T>(_ arr: [T]) -> T { arr[Int.random(in: 0..<arr.count)] }
+// MARK: - Production Advance
+
+struct RFPerformerEntry: Identifiable {
+    let id: UUID = UUID()
+    var name: String
+    var role: String
+    var location: String      // e.g. "Stage Left", "FOH", "Pit"
+    var wirelessChannels: Int // 0 = no wireless mic
+    var wirelessType: String  // "HH", "BP", "headset", "lav"
+    var iemChannels: Int      // 0 = no IEM
+    var notes: String
+}
+
+struct RFProductionAdvance: Identifiable {
+    let id: UUID = UUID()
+    var showName: String
+    var performers: [RFPerformerEntry]
+    var venue: RFVenue
+    var changeLog: [String]
+}
+
+// MARK: - Gear Validation
+
+struct RFValidationResult: Identifiable {
+    let id = UUID()
+    var category: String
+    var required: Int
+    var onHand: Int
+    var isOk: Bool { onHand >= required }
+}
+
+func validateGearList(gear: [RFGearItem], against advance: RFProductionAdvance) -> [RFValidationResult] {
+    let totalHH    = advance.performers.reduce(0) { $0 + ($1.wirelessType == "HH" ? $1.wirelessChannels : 0) }
+    let totalBP    = advance.performers.reduce(0) { $0 + ($1.wirelessType != "HH" ? $1.wirelessChannels : 0) }
+    let totalIEM   = advance.performers.reduce(0) { $0 + $1.iemChannels }
+
+    func qtyFor(_ cats: [String]) -> Int {
+        gear.filter { cats.contains($0.cat) }.reduce(0) { $0 + $1.qty }
+    }
+
+    var results: [RFValidationResult] = []
+
+    if totalHH > 0 {
+        results.append(RFValidationResult(
+            category: "Handheld Wireless",
+            required: totalHH,
+            onHand: qtyFor(["Handheld Wireless"])
+        ))
+    }
+    if totalBP > 0 {
+        results.append(RFValidationResult(
+            category: "Bodypack / Lav",
+            required: totalBP,
+            onHand: qtyFor(["Bodypack / Lav"])
+        ))
+    }
+    if totalIEM > 0 {
+        results.append(RFValidationResult(
+            category: "IEM",
+            required: totalIEM * 2,   // tx + rx pairs
+            onHand: qtyFor(["IEM Transmitter", "IEM Receiver"])
+        ))
+    }
+    return results
+}
+
+// MARK: - Production Advance Generator
+
+private let concertRoles: [(name: String, role: String, loc: String, hhCh: Int, bpCh: Int, iemCh: Int)] = [
+    ("Lead Vocals",     "Lead Vocalist",    "Center Stage",  1, 0, 1),
+    ("BGV 1",           "Background Vocal", "Stage Right",   1, 0, 1),
+    ("BGV 2",           "Background Vocal", "Stage Left",    1, 0, 1),
+    ("Guitar 1",        "Lead Guitar",      "Stage Right",   0, 1, 1),
+    ("Guitar 2",        "Rhythm Guitar",    "Stage Left",    0, 1, 1),
+    ("Bass",            "Bassist",          "Stage Left",    0, 1, 1),
+    ("Keys",            "Keyboard",         "Upstage Right", 0, 1, 1),
+    ("Drums",           "Drummer",          "Upstage",       0, 0, 1),
+    ("Perc",            "Percussionist",    "Upstage Left",  0, 1, 1),
+    ("MD",              "Music Director",   "Pit",           0, 0, 1),
+]
+
+private let theaterRoles: [(name: String, role: String, loc: String, hhCh: Int, bpCh: Int, iemCh: Int)] = [
+    ("Lead 1",          "Lead Actor",       "Center",        0, 1, 1),
+    ("Lead 2",          "Lead Actress",     "Center",        0, 1, 1),
+    ("Supporting 1",    "Supporting Actor", "Stage Right",   0, 1, 0),
+    ("Supporting 2",    "Supporting Actor", "Stage Left",    0, 1, 0),
+    ("Supporting 3",    "Supporting Actor", "Upstage",       0, 1, 0),
+    ("Swing",           "Swing/Cover",      "Wings",         0, 1, 0),
+    ("Conductor",       "Conductor",        "Pit",           0, 0, 1),
+    ("MD",              "Music Director",   "Pit",           0, 0, 1),
+]
+
+private let corporateRoles: [(name: String, role: String, loc: String, hhCh: Int, bpCh: Int, iemCh: Int)] = [
+    ("Presenter 1",     "Keynote Speaker",  "Stage",         1, 0, 1),
+    ("Presenter 2",     "Panel Moderator",  "Stage",         1, 0, 0),
+    ("Panelist 1",      "Panelist",         "Table",         0, 1, 0),
+    ("Panelist 2",      "Panelist",         "Table",         0, 1, 0),
+    ("Panelist 3",      "Panelist",         "Table",         0, 1, 0),
+    ("Emcee",           "Emcee",            "Stage",         1, 0, 1),
+]
+
+func generateProductionAdvance(venue: RFVenue) -> RFProductionAdvance {
+    let pool: [(name: String, role: String, loc: String, hhCh: Int, bpCh: Int, iemCh: Int)]
+    switch venue.type.lowercased() {
+    case let t where t.contains("theater") || t.contains("theatre"):
+        pool = theaterRoles
+    case let t where t.contains("corporate") || t.contains("conference") || t.contains("convention"):
+        pool = corporateRoles
+    default:
+        pool = concertRoles
+    }
+
+    let count = rfRand(max(3, pool.count - 3), pool.count)
+    let selected = Array(rfPickN(pool, count))
+
+    let performers: [RFPerformerEntry] = selected.map { r in
+        let wType: String
+        let wCh: Int
+        if r.hhCh > 0 { wType = "HH"; wCh = r.hhCh }
+        else if r.bpCh > 0 { wType = rfPick(["BP", "lav", "headset"]); wCh = r.bpCh }
+        else { wType = "none"; wCh = 0 }
+
+        return RFPerformerEntry(
+            name: r.name,
+            role: r.role,
+            location: r.loc,
+            wirelessChannels: wCh,
+            wirelessType: wType,
+            iemChannels: r.iemCh,
+            notes: ""
+        )
+    }
+
+    let showNames = ["Summer Tour", "World Tour", "Special Event", "Grand Opening",
+                     "Annual Gala", "Season Opener", "Final Night", "World Premiere"]
+
+    return RFProductionAdvance(
+        showName: "\(venue.name) — \(rfPick(showNames))",
+        performers: performers,
+        venue: venue,
+        changeLog: []
+    )
+}
+
+func generateRehearsalChange(
+    advance: RFProductionAdvance,
+    iteration: Int
+) -> (advance: RFProductionAdvance, description: String) {
+    var updated = advance
+    var desc = ""
+
+    let changeType = rfRand(0, 2)
+    switch changeType {
+    case 0 where updated.performers.count > 1:
+        // Remove a performer
+        let idx = rfRand(0, updated.performers.count - 1)
+        let removed = updated.performers.remove(at: idx)
+        desc = "Artist removed: \(removed.name) (\(removed.role)) — \(removed.wirelessChannels) wireless channel(s) freed"
+    case 1:
+        // Add a performer
+        let extras = ["Special Guest", "Opening Act", "Added Artist", "Last-Minute Addition"]
+        let types = ["HH", "BP", "headset"]
+        let wType = rfPick(types)
+        let newPerf = RFPerformerEntry(
+            name: rfPick(extras),
+            role: "Special Guest",
+            location: "Center Stage",
+            wirelessChannels: 1,
+            wirelessType: wType,
+            iemChannels: rfRand(0, 1),
+            notes: "Added for Rehearsal \(iteration + 1)"
+        )
+        updated.performers.append(newPerf)
+        desc = "Artist added: \(newPerf.name) — 1 \(wType) wireless required"
+    default:
+        // Swap wireless type for a performer
+        if let idx = updated.performers.indices.first(where: { updated.performers[$0].wirelessChannels > 0 }) {
+            let old = updated.performers[idx].wirelessType
+            let new = old == "HH" ? "BP" : "HH"
+            updated.performers[idx].wirelessType = new
+            desc = "\(updated.performers[idx].name) changed from \(old) to \(new) wireless"
+        } else {
+            desc = "No changes this rehearsal"
+        }
+    }
+
+    updated.changeLog.append("Rehearsal \(iteration + 1): \(desc)")
+    return (updated, desc)
+}
+
 func rfPickN<T>(_ arr: [T], _ n: Int) -> [T] {
     var copy = arr; var out = [T]()
     for _ in 0..<min(n, copy.count) {

@@ -67,7 +67,7 @@ struct SegmentedModeControl: View {
 
     var body: some View {
         HStack(spacing: 1) {
-            ForEach([("Free Build", AppMode.free), ("Exercises", .exercise), ("RF Planner", .rf)], id: \.0) { label, mode in
+            ForEach([("Free Build", AppMode.free), ("Exercises", .exercise), ("RF Planner", .rf), ("Intercom", .intercom)], id: \.0) { label, mode in
                 Button(label) { appState.mode = mode }
                     .buttonStyle(SegmentButtonStyle(isActive: appState.mode == mode))
             }
@@ -171,6 +171,9 @@ struct AppBodyView: View {
             case .rf:
                 RFPlannerView()
                     .environmentObject(appState.rfState)
+            case .intercom:
+                IntercomPlannerView()
+                    .environmentObject(appState.intercomState)
             default:
                 HStack(spacing: 0) {
                     SidebarView()

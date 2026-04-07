@@ -6,7 +6,27 @@ import AppKit
 import UniformTypeIdentifiers
 
 // MARK: - App Mode
-enum AppMode { case free, exercise, rf }
+enum AppMode { case free, exercise, rf, intercom }
+
+// MARK: - Intercom Phase
+enum IntercomPhase: String, CaseIterable, Identifiable {
+    case prep      = "Prep"
+    case rehearsal = "Rehearsals"
+    case show      = "Show"
+    var id: String { rawValue }
+}
+
+// MARK: - Intercom State
+class IntercomState: ObservableObject {
+    @Published var venue: RFVenue? = nil   // reuse RFVenue — venue properties are shared
+    @Published var phase: IntercomPhase = .prep
+    @Published var mode: CoordinatorMode = .beginner
+    @Published var productionAdvance: IntercomProductionAdvance? = nil
+    @Published var channelList: [IntercomChannel] = []
+    @Published var rehearsalIteration: Int = 0
+    @Published var channelListHistory: [[IntercomChannel]] = []
+    var nextId = 1
+}
 
 // MARK: - Configurable I/O
 struct IOConfig: Equatable {
@@ -45,6 +65,9 @@ class NodeInstance: ObservableObject, Identifiable {
     @Published var selectedPreset: String? = nil   // selected Lake module preset (for amps/processors)
     @Published var slotCards: [Int: SlotCard] = [:]   // slot index → inserted card
     @Published var danteDeviceName: String? = nil     // user-assigned Dante device name
+    /// Per-port banana jack ground tab orientation for binding post outputs.
+    /// port index → "left" | "right". Set via BananaOrientationPicker in exercise mode.
+    @Published var bananaOrientations: [Int: String] = [:]
 
     init(id: UUID = UUID(), type: String, position: CGPoint) {
         self.id = id
@@ -160,10 +183,30 @@ struct NodeConnection: Identifiable, Codable, Equatable {
     }
 }
 
+// MARK: - Coordinator Mode (shared by RF and Intercom planners)
+enum CoordinatorMode: String, CaseIterable, Identifiable {
+    case beginner = "Beginner"
+    case expert   = "Expert"
+    var id: String { rawValue }
+}
+
+// MARK: - RF Phase
+enum RFPhase: String, CaseIterable, Identifiable {
+    case prep      = "Prep"
+    case rehearsal = "Rehearsals"
+    case show      = "Show"
+    var id: String { rawValue }
+}
+
 // MARK: - RF State
 class RFState: ObservableObject {
     @Published var venue: RFVenue? = nil
     @Published var gear: [RFGearItem] = []
+    @Published var phase: RFPhase = .prep
+    @Published var mode: CoordinatorMode = .beginner
+    @Published var productionAdvance: RFProductionAdvance? = nil
+    @Published var rehearsalIteration: Int = 0
+    @Published var gearListHistory: [[RFGearItem]] = []
     var nextId = 1
 }
 
@@ -189,6 +232,7 @@ class AppState: ObservableObject {
     @Published var isDarkMode: Bool = false
     @Published var exercises: [Exercise] = builtInExercises
     @Published var rfState: RFState = RFState()
+    @Published var intercomState: IntercomState = IntercomState()
     @Published var canvasScale: CGFloat = 1.0
     @Published var canvasOffset: CGSize = .zero
     @Published var crossTabConnections: [NodeConnection] = []
