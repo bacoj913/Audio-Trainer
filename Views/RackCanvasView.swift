@@ -581,8 +581,7 @@ struct RackCanvasFacePort: View {
     var bundleStyle: PortGroup.BundleStyle = .single
     var compactFor1U: Bool = false
     var isNetworkSwitch: Bool = false
-    var usesAlignedSlotLabelLayout: Bool = false
-    
+
     @EnvironmentObject var appState: AppState
     @State private var showingVlanPicker = false
 
@@ -621,10 +620,7 @@ struct RackCanvasFacePort: View {
     }
 
     private var labelWidth: CGFloat {
-        if usesAlignedSlotLabelLayout {
-            return compactFor1U ? 52 : 44
-        }
-        return compactFor1U ? 38 : 44
+        compactFor1U ? 38 : 44
     }
 
     private var labelBandHeight: CGFloat {
@@ -632,97 +628,72 @@ struct RackCanvasFacePort: View {
     }
 
     private var totalHeight: CGFloat {
-        if usesAlignedSlotLabelLayout {
-            return labelBandHeight + portShellHeight
-        }
-        return label.isEmpty ? (compactFor1U ? 16 : 18) : (compactFor1U ? 27 : 30)
+        labelBandHeight + portShellHeight
     }
 
     private var glyphScale: CGFloat {
         compactFor1U ? 0.82 : 1.0
     }
+
     var body: some View {
-        Group {
-            if usesAlignedSlotLabelLayout {
-                VStack(spacing: 0) {
-                    ZStack(alignment: .top) {
-                        if !label.isEmpty {
-                            Text(label)
-                                .font(.system(size: compactFor1U ? 6 : 7, weight: .medium))
-                                .foregroundColor(.primary.opacity(0.78))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.45)
-                                .allowsTightening(true)
-                                .truncationMode(.tail)
-                                .frame(width: labelWidth, height: labelBandHeight, alignment: .top)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .allowsHitTesting(false)
-                        } else {
-                            Color.clear
-                                .frame(width: labelWidth, height: labelBandHeight)
-                        }
-                    }
-
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.black.opacity(0.10))
-                            .frame(width: portShellWidth, height: portShellHeight)
-
-                        PortGlyph(
-                            color: color,
-                            bundleStyle: bundleStyle,
-                            showDisconnectMark: isConnected && side == "in" && !isConnecting
-                        )
-                        .scaleEffect(glyphScale)
-
-                        if isNetworkSwitch && vlanId > 0 {
-                            Text("\(vlanId)")
-                                .font(.system(size: 5, weight: .bold, design: .monospaced))
-                                .foregroundColor(.white)
-                                .allowsHitTesting(false)
-                        }
-                    }
-                    .frame(width: labelWidth, height: portShellHeight, alignment: .top)
+        VStack(spacing: 0) {
+            ZStack(alignment: .top) {
+                if !label.isEmpty {
+                    Text(label)
+                        .font(.system(size: compactFor1U ? 6 : 7, weight: .medium))
+                        .foregroundColor(.primary.opacity(0.78))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .truncationMode(.tail)
+                        .frame(width: labelWidth, height: labelBandHeight, alignment: .top)
+                        .allowsHitTesting(false)
+                } else {
+                    Color.clear
+                        .frame(width: labelWidth, height: labelBandHeight)
                 }
-                .frame(width: labelWidth, height: totalHeight, alignment: .top)
-            } else {
-                VStack(spacing: compactFor1U ? 1 : 2) {
-                    if !label.isEmpty {
-                        Text(label)
-                            .font(.system(size: compactFor1U ? 6 : 7, weight: .medium))
-                            .foregroundColor(.primary.opacity(0.78))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .truncationMode(.tail)
-                            .frame(width: labelWidth, alignment: .center)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .allowsHitTesting(false)
-                    }
-
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.black.opacity(0.10))
-                            .frame(width: portShellWidth, height: portShellHeight)
-
-                        PortGlyph(
-                            color: color,
-                            bundleStyle: bundleStyle,
-                            showDisconnectMark: isConnected && side == "in" && !isConnecting
-                        )
-                        .scaleEffect(glyphScale)
-
-                        if isNetworkSwitch && vlanId > 0 {
-                            Text("\(vlanId)")
-                                .font(.system(size: 5, weight: .bold, design: .monospaced))
-                                .foregroundColor(.white)
-                                .allowsHitTesting(false)
-                        }
-                    }
-                }
-                .frame(width: labelWidth, height: totalHeight, alignment: .top)
             }
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.black.opacity(0.10))
+                    .frame(width: portShellWidth, height: portShellHeight)
+
+                PortGlyph(
+                    color: color,
+                    bundleStyle: bundleStyle,
+                    showDisconnectMark: isConnected && side == "in" && !isConnecting
+                )
+                .scaleEffect(glyphScale)
+
+                if isNetworkSwitch && vlanId > 0 {
+                    Text("\(vlanId)")
+                        .font(.system(size: 5, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .allowsHitTesting(false)
+                }
+            }
+            // Anchor reported from the glyph ZStack center so curves land on
+            // the glyph itself, not the midpoint of the label+glyph frame.
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: PortAnchorPref.self,
+                        value: [
+                            "\(instance.id)-\(side)-\(portIndex)": geo.frame(in: .named("canvas")).center
+                        ]
+                    )
+                }
+            )
+            .frame(width: labelWidth, height: portShellHeight, alignment: .top)
         }
-        .contentShape(Rectangle())
+        .frame(width: labelWidth, height: totalHeight, alignment: .top)
+        // Use the glyph shell as the hit target rather than the full label+glyph
+        // frame — prevents overlap on dense ports (e.g. 24-port 1U switches).
+        .contentShape(
+            Rectangle()
+                .size(width: portShellWidth, height: portShellHeight)
+                .offset(x: (labelWidth - portShellWidth) / 2, y: labelBandHeight)
+        )
         .shadow(
             color: color.opacity(0.45),
             radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
@@ -915,8 +886,7 @@ private struct RackSlotCardFace: View {
                                 signalType: port.signalType,
                                 bundleStyle: port.bundleStyle,
                                 compactFor1U: true,
-                                isNetworkSwitch: false,
-                                usesAlignedSlotLabelLayout: true,
+                                isNetworkSwitch: false
                             )
                             .position(
                                 x: evenlySpacedX(
@@ -940,8 +910,7 @@ private struct RackSlotCardFace: View {
                                 signalType: port.signalType,
                                 bundleStyle: port.bundleStyle,
                                 compactFor1U: true,
-                                isNetworkSwitch: false,
-                                usesAlignedSlotLabelLayout: true,
+                                isNetworkSwitch: false
                             )
                             .position(
                                 x: evenlySpacedX(
@@ -979,8 +948,7 @@ private struct RackSlotCardFace: View {
                             signalType: port.signalType,
                             bundleStyle: port.bundleStyle,
                             compactFor1U: true,
-                            isNetworkSwitch: false,
-                            usesAlignedSlotLabelLayout: true,
+                            isNetworkSwitch: false
                         )
                         .position(
                             x: geo.size.width * 0.5,
@@ -1587,49 +1555,6 @@ private extension AppState {
     RackCanvasView()
         .environmentObject(AppState.rackCanvasSlottedDeviceState)
         .frame(width: 860, height: 700)
-}
-
-#Preview("Rack Gear Item – Unslotted") {
-    let instance = NodeInstance(type: "power_amp", position: .zero)
-    instance.rackSlot = 0
-
-    let comp = Components.all["power_amp"]!
-
-    return ZStack(alignment: .topLeading) {
-        RackSlotRow(slot: 0, totalUnits: 8, tab: CanvasTab(name: "Preview"))
-        RackGearItem(
-            instance: instance,
-            comp: comp,
-            rackCapacity: 8
-        )
-    }
-    .environmentObject(AppState())
-    .frame(width: 820, height: 220)
-    .padding()
-}
-
-#Preview("Rack Gear Item – Slotted") {
-    let instance = NodeInstance(type: "stagebox_32", position: .zero)
-    instance.rackSlot = 0
-
-    if let slotCardComp = Components.list.first(where: { $0.isSlotCard }) {
-        instance.slotCards[0] = SlotCard(slotNumber: 0, cardType: slotCardComp.id)
-        instance.slotCards[1] = SlotCard(slotNumber: 1, cardType: slotCardComp.id)
-    }
-
-    let comp = Components.all["stagebox_32"]!
-
-    return ZStack(alignment: .topLeading) {
-        RackSlotRow(slot: 0, totalUnits: 8, tab: CanvasTab(name: "Preview"))
-        RackGearItem(
-            instance: instance,
-            comp: comp,
-            rackCapacity: 8
-        )
-    }
-    .environmentObject(AppState())
-    .frame(width: 820, height: 320)
-    .padding()
 }
 
 #Preview("Rack Canvas – Empty") {
