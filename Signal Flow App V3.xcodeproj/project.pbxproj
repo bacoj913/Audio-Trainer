@@ -30,6 +30,9 @@
 		51B50B332F7613A200E018E7 /* AESRuleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B50B2D2F7613A200E018E7 /* AESRuleData.swift */; };
 		51B50B342F7613A200E018E7 /* IntercomRuleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B50B2E2F7613A200E018E7 /* IntercomRuleData.swift */; };
 		51B50B372F7615F100E018E7 /* SavedProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B50B362F7615F100E018E7 /* SavedProject.swift */; };
+		51CC01012F9A000000C5E043 /* IntercomData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CC01002F9A000000C5E043 /* IntercomData.swift */; };
+		51CC01032F9A000000C5E043 /* IntercomPlannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CC01022F9A000000C5E043 /* IntercomPlannerView.swift */; };
+		51CC01052F9A000000C5E043 /* BindingPostRuleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CC01042F9A000000C5E043 /* BindingPostRuleData.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +60,9 @@
 		51B50B2F2F7613A200E018E7 /* SignalRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalRules.swift; sourceTree = "<group>"; };
 		51B50B302F7613A200E018E7 /* SpeakerCableRuleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerCableRuleData.swift; sourceTree = "<group>"; };
 		51B50B362F7615F100E018E7 /* SavedProject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedProject.swift; sourceTree = "<group>"; };
+		51CC01002F9A000000C5E043 /* IntercomData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntercomData.swift; sourceTree = "<group>"; };
+		51CC01022F9A000000C5E043 /* IntercomPlannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntercomPlannerView.swift; sourceTree = "<group>"; };
+		51CC01042F9A000000C5E043 /* BindingPostRuleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingPostRuleData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,6 +82,7 @@
 				5131C8842F72F20200C5E043 /* ComponentData.swift */,
 				5131C8862F72F20200C5E043 /* ExerciseData.swift */,
 				5131C8872F72F20200C5E043 /* RFData.swift */,
+				51CC01002F9A000000C5E043 /* IntercomData.swift */,
 				51B50B352F7613A800E018E7 /* Signal Rules */,
 			);
 			path = Data;
@@ -91,6 +98,7 @@
 				5131C8902F72F23700C5E043 /* InspectorView.swift */,
 				5131C8912F72F23700C5E043 /* NodeView.swift */,
 				5131C8922F72F23700C5E043 /* RFPlannerView.swift */,
+				51CC01022F9A000000C5E043 /* IntercomPlannerView.swift */,
 				5131C8932F72F23700C5E043 /* SidebarView.swift */,
 				5131C8A32F72F23700C5E043 /* CanvasTabBar.swift */,
 				5131C8A52F72F23700C5E043 /* RackCanvasView.swift */,
@@ -136,6 +144,7 @@
 				51B50B2E2F7613A200E018E7 /* IntercomRuleData.swift */,
 				51B50B2F2F7613A200E018E7 /* SignalRules.swift */,
 				51B50B302F7613A200E018E7 /* SpeakerCableRuleData.swift */,
+				51CC01042F9A000000C5E043 /* BindingPostRuleData.swift */,
 			);
 			path = "Signal Rules";
 			sourceTree = "<group>";
@@ -235,6 +244,9 @@
 				5131C8A62F72F23700C5E043 /* DanteControllerView.swift in Sources */,
 				5131C88C2F72F20200C5E043 /* ComponentData.swift in Sources */,
 				5131C8822F72E6E000C5E043 /* ContentView.swift in Sources */,
+				51CC01012F9A000000C5E043 /* IntercomData.swift in Sources */,
+				51CC01032F9A000000C5E043 /* IntercomPlannerView.swift in Sources */,
+				51CC01052F9A000000C5E043 /* BindingPostRuleData.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

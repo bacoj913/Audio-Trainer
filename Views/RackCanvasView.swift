@@ -341,9 +341,36 @@ struct RackCanvasView: View {
                                 .offset(y: CGFloat(instance.rackSlot ?? 0) * unitHeight)
                             }
                         }
+
+                        // Canvas lives inside the content ZStack so it shares the same
+                        // coordinate space as port anchors — curves stay attached when scrolling.
+                        Canvas { ctx, _ in
+                            drawConnections(ctx: ctx)
+
+                            if let fromId = appState.connectingFromId,
+                               let src = appState.portCenter(
+                                for: fromId,
+                                portIndex: appState.connectingFromPortIndex,
+                                side: "out"
+                               ) {
+                                drawPreview(ctx: ctx, from: src, to: mousePos)
+                            }
+                        }
+                        .allowsHitTesting(false)
+                        .frame(maxWidth: .infinity, minHeight: CGFloat(totalUnits) * unitHeight + 24)
+
+                        ForEach(appState.connections) { conn in
+                            ConnectionHitArea(connection: conn)
+                        }
                     }
+                    .coordinateSpace(name: "canvas")
                     .frame(maxWidth: .infinity)
                     .padding(12)
+                    .onContinuousHover { phase in
+                        if case .active(let loc) = phase {
+                            mousePos = loc
+                        }
+                    }
                 }
                 .onDrop(of: [UTType.plainText], isTargeted: nil) { providers, location in
                     providers.first?.loadItem(forTypeIdentifier: UTType.plainText.identifier) { data, _ in
@@ -362,34 +389,10 @@ struct RackCanvasView: View {
                     }
                     return true
                 }
-                .coordinateSpace(name: "canvas")
                 .onPreferenceChange(PortAnchorPref.self) { positions in
                     DispatchQueue.main.async {
                         appState.activeTab.portPositions.merge(positions) { $1 }
                     }
-                }
-
-                Canvas { ctx, _ in
-                    drawConnections(ctx: ctx)
-
-                    if let fromId = appState.connectingFromId,
-                       let src = appState.portCenter(
-                        for: fromId,
-                        portIndex: appState.connectingFromPortIndex,
-                        side: "out"
-                       ) {
-                        drawPreview(ctx: ctx, from: src, to: mousePos)
-                    }
-                }
-                .allowsHitTesting(false)
-
-                ForEach(appState.connections) { conn in
-                    ConnectionHitArea(connection: conn)
-                }
-            }
-            .onContinuousHover { phase in
-                if case .active(let loc) = phase {
-                    mousePos = loc
                 }
             }
             .onTapGesture {
@@ -723,16 +726,6 @@ struct RackCanvasFacePort: View {
         .shadow(
             color: color.opacity(0.45),
             radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
-        )
-        .background(
-            GeometryReader { geo in
-                Color.clear.preference(
-                    key: PortAnchorPref.self,
-                    value: [
-                        "\(instance.id)-\(side)-\(portIndex)": geo.frame(in: .named("canvas")).center
-                    ]
-                )
-            }
         )
         .popover(isPresented: $showingVlanPicker, arrowEdge: .bottom) {
             VlanPickerPopover(instance: instance, portIndex: portIndex, label: label)
@@ -1417,13 +1410,17 @@ struct RackGearItem: View {
         .offset(y: dragYOffset)
         .zIndex(isDragging ? 1000 : 1)
         .onHover { isHovered = $0 }
-        .gesture(
-            DragGesture(minimumDistance: 2)
+        // simultaneousGesture lets child tap gestures fire even while the parent
+        // drag is evaluating, fixing port clicks on dense/network devices.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 6)
                 .updating($isDragging) { _, state, _ in
                     state = true
                 }
                 .onChanged { value in
-                    dragYOffset = value.translation.height
+                    if abs(value.translation.height) > 4 {
+                        dragYOffset = value.translation.height
+                    }
                 }
                 .onEnded { value in
                     let newSlot = clampedRackSlot(for: value.translation.height)

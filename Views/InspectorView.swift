@@ -18,6 +18,8 @@ struct InspectorView: View {
                     ExercisePanelView()
                 case .rf:
                     EmptyView()
+                case .intercom:
+                    EmptyView()
                 }
             }
         }

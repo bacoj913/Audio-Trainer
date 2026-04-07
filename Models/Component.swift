@@ -25,6 +25,7 @@ struct PortGroup {
         case stereoPair
         case multichannel
         case network
+        case bindingPost
     }
 
     init(
@@ -70,6 +71,12 @@ struct PortGroup {
             self.transport = transport ?? "MADI"
             self.isNetwork = isNetwork ?? false
             self.bundleStyle = bundleStyle ?? .multichannel
+
+        case "bindingpost":
+            self.channelsPerPort = channelsPerPort ?? 1
+            self.transport = transport
+            self.isNetwork = isNetwork ?? false
+            self.bundleStyle = bundleStyle ?? .bindingPost
 
         default:
             self.channelsPerPort = channelsPerPort ?? 1
@@ -146,7 +153,8 @@ extension Component {
         comingSoon: Bool = false,
         availablePresets: [String] = [],
         slotCount: Int = 0,
-        isSlotCard: Bool = false
+        isSlotCard: Bool = false,
+        presetBananaOrientations: [String: String] = [:]
     ) {
         self.init(
             id: id,
@@ -165,7 +173,8 @@ extension Component {
             comingSoon: comingSoon,
             availablePresets: availablePresets,
             slotCount: slotCount,
-            isSlotCard: isSlotCard
+            isSlotCard: isSlotCard,
+            presetBananaOrientations: presetBananaOrientations
         )
     }
 }
@@ -202,6 +211,10 @@ struct Component {
     var availablePresets: [String] = []   // e.g. Lake module names for amps/processors
     var slotCount: Int = 0                // number of expansion card slots (0 = none)
     var isSlotCard: Bool = false          // true when this component IS an expansion card
+    /// Per-preset expected banana ground tab direction for binding post outputs.
+    /// Keys are preset names; values are "left" or "right".
+    /// Only relevant for amps with .bindingPost output ports.
+    var presetBananaOrientations: [String: String] = [:]
 
     /// True for any device that participates in a network (dante, milan, aes67, avb, or plain "network" signal type).
     var hasNetworkIP: Bool {
@@ -237,6 +250,7 @@ extension Color {
         case "line":       return Color(.systemRed)
         case "instrument": return Color(.systemPink)
         case "speaker":    return Color(.black)
+        case "bindingpost": return Color(.black)
         case "network":    return Color(.systemGreen)
         case "antenna":    return Color(.systemGray)
         case "madi":       return Color(.systemTeal)
