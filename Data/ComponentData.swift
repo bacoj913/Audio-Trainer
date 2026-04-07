@@ -390,7 +390,7 @@ enum Components {
                 PortGroup(connector: "etherCON", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
             ],
             outputGroups: [
-                PortGroup(connector: "Binding Post", count: 4, signalType: "speaker")
+                PortGroup(connector: "Binding Post", count: 4, signalType: "bindingpost")
             ],
             desc: "20,000W 4-channel powered loudspeaker management amplifier with analog, AES3, and Dante inputs",
             level: "Speaker Level",
@@ -398,7 +398,17 @@ enum Components {
             availablePresets: [
                 "PA Top Module", "PA Sub Module", "Fill Module", "Delay Module",
                 "Front Fill Module", "Side Fill Module", "Monitor Module", "Drum Fill Module"
-            ]),
+            ],
+                  presetBananaOrientations: [
+                      "PA Top Module":     "left",
+                      "PA Sub Module":     "left",
+                      "Fill Module":       "left",
+                      "Delay Module":      "left",
+                      "Front Fill Module": "left",
+                      "Side Fill Module":  "left",
+                      "Monitor Module":    "right",
+                      "Drum Fill Module":  "right",
+                  ]),
 
         // ── Speaker ──────────────────────────────────────────
         Component(id: "speakers",
