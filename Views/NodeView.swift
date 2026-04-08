@@ -703,30 +703,6 @@ struct PortEdgeDot: View {
             : "Output — click or drag to start connection"
         )
     }
-        PortGlyph(
-            color: color,
-            bundleStyle: bundleStyle,
-            showDisconnectMark: isConnected && side == "in" && !isConnecting
-        )
-        .shadow(
-            color: color.opacity(0.5),
-            radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
-        )
-        .background(
-            GeometryReader { geo in
-                Color.clear.preference(
-                    key: PortAnchorPref.self,
-                    value: [
-                        "\(instance.id)-\(side)-\(portIndex)":
-                            CGPoint(
-                                x: geo.size.width / 2,
-                                y: geo.size.height / 2
-                            )
-                    ]
-                )
-            }
-        )
-    }
 }
 
 // MARK: - Banana Orientation Picker
