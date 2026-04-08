@@ -587,40 +587,43 @@ struct PortEdgeDot: View {
     }
     
     var body: some View {
-        ZStack {
-            Color.clear
-                .frame(
-                    width: NodeView.portHitWidth,
-                    height: NodeView.portHitHeight
-                )
-            
-            PortGlyph(
-                color: color,
-                bundleStyle: bundleStyle,
-                showDisconnectMark: isConnected && side == "in" && !isConnecting
-            )
-            .shadow(
-                color: color.opacity(0.5),
-                radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
-            )
-        }
-        .overlay(alignment: side == "in" ? .leading : .trailing) {
-            if !label.isEmpty {
-                Text(label)
-                    .font(.system(size: 8))
-                    .foregroundColor(.primary.opacity(0.65))
-                    .lineLimit(1)
-                    .fixedSize()
-                    .allowsHitTesting(false)
-                    .offset(
-                        x: side == "in"
-                        ? (NodeView.portHitWidth / 2 + NodeView.portLabelGap)
-                        : -(NodeView.portHitWidth / 2
-                            + NodeView.portLabelGap)
+        Button(action: handlePortTap) {
+            ZStack {
+                Color.clear
+                    .frame(
+                        width: NodeView.portHitWidth,
+                        height: NodeView.portHitHeight
                     )
+
+                PortGlyph(
+                    color: color,
+                    bundleStyle: bundleStyle,
+                    showDisconnectMark: isConnected && side == "in" && !isConnecting
+                )
+                .shadow(
+                    color: color.opacity(0.5),
+                    radius: isSource ? 8 : (isConnecting && side == "in" ? 6 : 0)
+                )
             }
+            .overlay(alignment: side == "in" ? .leading : .trailing) {
+                if !label.isEmpty {
+                    Text(label)
+                        .font(.system(size: 8))
+                        .foregroundColor(.primary.opacity(0.65))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .allowsHitTesting(false)
+                        .offset(
+                            x: side == "in"
+                            ? (NodeView.portHitWidth / 2 + NodeView.portLabelGap)
+                            : -(NodeView.portHitWidth / 2
+                                + NodeView.portLabelGap)
+                        )
+                }
+            }
+            .contentShape(Rectangle())
         }
-        .contentShape(Rectangle())
+        .buttonStyle(.plain)
         .background(
             GeometryReader { geo in
                 Color.clear.preference(
@@ -641,7 +644,6 @@ struct PortEdgeDot: View {
                 onSelect: { orientation in
                     showingBindingPostPicker = false
                     lastBananaOrientation = orientation
-                    // Persist the chosen orientation on the instance for validation
                     instance.bananaOrientations[portIndex] = orientation
                     if side == "out" {
                         appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
@@ -652,47 +654,9 @@ struct PortEdgeDot: View {
             )
             .environmentObject(appState)
         }
-        .onTapGesture {
-            // Binding post ports in exercise mode show the orientation picker first.
-            if bundleStyle == .bindingPost && appState.mode == .exercise {
-                if side == "out" && !isConnecting {
-                    showingBindingPostPicker = true
-                } else if side == "out" && isSource {
-                    appState.cancelConnecting()
-                } else if side == "in" && isConnecting {
-                    showingBindingPostPicker = true
-                } else if side == "in" && isConnected {
-                    appState.disconnectInput(instanceId: instance.id, portIndex: portIndex)
-                }
-                return
-            }
-            if side == "out" {
-                if !isConnecting {
-                    appState.startConnecting(
-                        fromId: instance.id,
-                        fromPortIndex: portIndex
-                    )
-                } else if isSource {
-                    appState.cancelConnecting()
-                }
-            } else {
-                if isConnecting {
-                    appState.finishConnecting(
-                        toId: instance.id,
-                        toPortIndex: portIndex
-                    )
-                } else if isConnected {
-                    appState.disconnectInput(
-                        instanceId: instance.id,
-                        portIndex: portIndex
-                    )
-                }
-            }
-        }
         .simultaneousGesture(
             DragGesture(minimumDistance: 6)
                 .onChanged { _ in
-                    // Start connection on first drag event from an output port
                     if side == "out" && !isConnecting {
                         appState.startConnecting(
                             fromId: instance.id,
@@ -701,7 +665,6 @@ struct PortEdgeDot: View {
                     }
                 }
                 .onEnded { _ in
-                    // If drag ended without landing on an input port, cancel
                     if appState.connectingFromId != nil {
                         appState.cancelConnecting()
                     }
@@ -714,8 +677,34 @@ struct PortEdgeDot: View {
             : "Output — click or drag to start connection"
         )
     }
-    
-    private var glyphWithAnchor: some View {
+
+    private func handlePortTap() {
+        if bundleStyle == .bindingPost && appState.mode == .exercise {
+            if side == "out" && !isConnecting {
+                showingBindingPostPicker = true
+            } else if side == "out" && isSource {
+                appState.cancelConnecting()
+            } else if side == "in" && isConnecting {
+                showingBindingPostPicker = true
+            } else if side == "in" && isConnected {
+                appState.disconnectInput(instanceId: instance.id, portIndex: portIndex)
+            }
+            return
+        }
+        if side == "out" {
+            if !isConnecting {
+                appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
+            } else if isSource {
+                appState.cancelConnecting()
+            }
+        } else {
+            if isConnecting {
+                appState.finishConnecting(toId: instance.id, toPortIndex: portIndex)
+            } else if isConnected {
+                appState.disconnectInput(instanceId: instance.id, portIndex: portIndex)
+            }
+        }
+    }
         PortGlyph(
             color: color,
             bundleStyle: bundleStyle,
