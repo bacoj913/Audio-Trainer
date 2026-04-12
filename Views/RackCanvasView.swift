@@ -676,6 +676,14 @@ struct RackCanvasFacePort: View {
                         .foregroundColor(.white)
                         .allowsHitTesting(false)
                 }
+                // AES visual loop-through indicator: small chain dot when connected
+                if bundleStyle == .stereoPair && isConnected {
+                    Image(systemName: "link")
+                        .font(.system(size: 5, weight: .bold))
+                        .foregroundColor(.white.opacity(0.9))
+                        .allowsHitTesting(false)
+                        .offset(x: side == "in" ? -6 : 6, y: 0)
+                }
             }
             // Anchor reported from the glyph ZStack center so curves land on
             // the glyph itself, not the midpoint of the label+glyph frame.
@@ -727,6 +735,16 @@ struct RackCanvasFacePort: View {
         .contextMenu {
             if isNetworkSwitch {
                 Button("Set VLAN Tag…") { showingVlanPicker = true }
+            }
+            // AES chain navigator: show connected device
+            if bundleStyle == .stereoPair && isConnected {
+                if let nextId = appState.connectedInstanceId(
+                    from: instance.id, portIndex: portIndex, side: side
+                ) {
+                    Button("Jump to Connected Device") {
+                        appState.highlightInstance(nextId)
+                    }
+                }
             }
         }
         .onTapGesture {
@@ -1186,14 +1204,18 @@ struct RackGearItem: View {
             Color.clear.frame(width: 34)
 
             ZStack(alignment: .topLeading) {
+                let isHighlighted = appState.highlightedInstanceId == instance.id
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color(nsColor: .controlBackgroundColor))
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
                             .stroke(
-                                Color.categoryColor(comp.category).opacity(0.45),
-                                lineWidth: 1.25
+                                isHighlighted
+                                    ? Color.yellow
+                                    : Color.categoryColor(comp.category).opacity(0.45),
+                                lineWidth: isHighlighted ? 2.5 : 1.25
                             )
+                            .animation(.easeInOut(duration: 0.3), value: isHighlighted)
                     )
 
                 VStack(alignment: .leading, spacing: 0) {

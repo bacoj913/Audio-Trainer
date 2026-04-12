@@ -273,6 +273,8 @@ class AppState: ObservableObject {
 
     /// User-saved rack templates shown in the "My Equipment" sidebar category.
     @Published var userRacks: [UserRack] = []
+    /// Temporarily highlighted instance (used by AES chain navigator to flash/scroll to device).
+    @Published var highlightedInstanceId: UUID? = nil
     /// URL of the currently open project file (nil = unsaved).
     var currentProjectURL: URL? = nil
 
@@ -426,6 +428,29 @@ class AppState: ObservableObject {
 
     func removeDanteFlow(id: UUID) {
         danteFlows.removeAll { $0.id == id }
+    }
+
+    // MARK: - AES Chain Navigation
+
+    /// Returns the instance ID of the device connected to the given port via any active connection.
+    /// Used by the AES chain navigator to jump to the next device in an AES daisy-chain.
+    func connectedInstanceId(from instanceId: UUID, portIndex: Int, side: String) -> UUID? {
+        let all = activeTab.connections + crossTabConnections
+        if side == "out" {
+            return all.first(where: { $0.fromId == instanceId && $0.fromPortIndex == portIndex })?.toId
+        } else {
+            return all.first(where: { $0.toId == instanceId && $0.toPortIndex == portIndex })?.fromId
+        }
+    }
+
+    /// Temporarily highlights an instance (flashes it) for the AES chain navigator.
+    func highlightInstance(_ id: UUID) {
+        highlightedInstanceId = id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            if self?.highlightedInstanceId == id {
+                self?.highlightedInstanceId = nil
+            }
+        }
     }
 
     // MARK: - Connections
