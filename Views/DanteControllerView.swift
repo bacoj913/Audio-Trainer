@@ -1,409 +1,369 @@
-// Views/DanteControllerView.swift — Dante / network audio routing controller
+// Views/DanteControllerView.swift — Dante / network audio routing matrix
 
 import SwiftUI
 
-// MARK: - Dante Controller
+// MARK: - Channel Descriptors
+
+private struct DanteTXChannel: Identifiable {
+    let id: String      // "\(instId)-out-\(portIdx)"
+    let device: NodeInstance
+    let comp: Component
+    let portIndex: Int
+    let label: String
+}
+
+private struct DanteRXChannel: Identifiable {
+    let id: String      // "\(instId)-in-\(portIdx)"
+    let device: NodeInstance
+    let comp: Component
+    let portIndex: Int
+    let label: String
+}
+
+// MARK: - Dante Controller (Matrix)
 
 struct DanteControllerView: View {
     @EnvironmentObject var appState: AppState
-    @State private var showingAddFlow = false
-    @State private var selectedDeviceId: UUID? = nil
 
     // All Dante-capable instances across every tab
-    private var devices: [(inst: NodeInstance, comp: Component)] {
+    private var allDevices: [(inst: NodeInstance, comp: Component)] {
         appState.allNetworkInstances
     }
 
-    var body: some View {
-        HSplitView {
-            // ── Left: device list ─────────────────────────────
-            deviceListPanel
-                .frame(minWidth: 220, idealWidth: 240, maxWidth: 300)
-
-            // ── Right: flow list / detail ─────────────────────
-            flowPanel
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private var txChannels: [DanteTXChannel] {
+        allDevices.flatMap { item -> [DanteTXChannel] in
+            let ports  = item.inst.effectivePorts ?? item.comp.ports
+            let types  = item.inst.effectiveOutputTypes ?? item.comp.outputs
+            return zip(ports.outputs.indices, ports.outputs).compactMap { idx, label in
+                guard idx < types.count,
+                      ["dante","milan","aes67","avb","network"].contains(types[idx].lowercased())
+                else { return nil }
+                return DanteTXChannel(
+                    id: "\(item.inst.id)-out-\(idx)",
+                    device: item.inst,
+                    comp: item.comp,
+                    portIndex: idx,
+                    label: label
+                )
+            }
         }
-        .sheet(isPresented: $showingAddFlow) {
-            AddDanteFlowSheet(devices: devices)
+    }
+
+    private var rxChannels: [DanteRXChannel] {
+        allDevices.flatMap { item -> [DanteRXChannel] in
+            let ports  = item.inst.effectivePorts ?? item.comp.ports
+            let types  = item.inst.effectiveInputTypes ?? item.comp.inputs
+            return zip(ports.inputs.indices, ports.inputs).compactMap { idx, label in
+                guard idx < types.count,
+                      ["dante","milan","aes67","avb","network"].contains(types[idx].lowercased())
+                else { return nil }
+                return DanteRXChannel(
+                    id: "\(item.inst.id)-in-\(idx)",
+                    device: item.inst,
+                    comp: item.comp,
+                    portIndex: idx,
+                    label: label
+                )
+            }
+        }
+    }
+
+    var body: some View {
+        if allDevices.isEmpty {
+            emptyState
+        } else {
+            DanteMatrixView(txChannels: txChannels, rxChannels: rxChannels)
                 .environmentObject(appState)
         }
     }
 
-    // MARK: - Device List
-
-    private var deviceListPanel: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Devices")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text("\(devices.count)")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.secondary)
-            }
-            
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10.5)
-            .background(.ultraThinMaterial)
-            .overlay(Divider(), alignment: .bottom)
-
-            if devices.isEmpty {
-                Spacer()
-                VStack(spacing: 8) {
-                    Image(systemName: "network.slash")
-                        .font(.system(size: 28))
-                        .foregroundColor(.secondary.opacity(0.5))
-                    Text("No Dante / network devices\non canvas yet")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                Spacer()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(devices, id: \.inst.id) { item in
-                            DeviceRow(
-                                inst: item.inst,
-                                comp: item.comp,
-                                isSelected: selectedDeviceId == item.inst.id,
-                                flowCount: flowCount(for: item.inst.id)
-                            )
-                            .onTapGesture { selectedDeviceId = item.inst.id }
-                            Divider().padding(.leading, 12)
-                        }
-                    }
-                }
-            }
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "network.slash")
+                .font(.system(size: 40))
+                .foregroundColor(.secondary.opacity(0.4))
+            Text("No Dante / network devices on canvas")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+            Text("Add devices with Dante, Milan, AES67, or AVB ports to the canvas.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 300)
         }
-        .background(Color(nsColor: .controlBackgroundColor))
-        .overlay(Divider(), alignment: .trailing)
-    }
-
-    // MARK: - Flow Panel
-
-    private var flowPanel: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Routing Flows")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Button {
-                    showingAddFlow = true
-                } label: {
-                    Label("Add Flow", systemImage: "plus")
-                        .font(.system(size: 11))
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .disabled(devices.count < 2)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
-            .overlay(Divider(), alignment: .bottom)
-
-            // Filtered flows
-            let visibleFlows = selectedDeviceId == nil
-                ? appState.danteFlows
-                : appState.danteFlows.filter { $0.fromDeviceId == selectedDeviceId || $0.toDeviceId == selectedDeviceId }
-
-            if visibleFlows.isEmpty {
-                Spacer()
-                VStack(spacing: 10) {
-                    Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 32))
-                        .foregroundColor(.secondary.opacity(0.4))
-                    Text(appState.danteFlows.isEmpty
-                         ? "No flows yet.\nTap \"+\" to route a transmitter to a receiver."
-                         : "No flows for selected device.")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                Spacer()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(visibleFlows) { flow in
-                            FlowRow(flow: flow, devices: devices)
-                                .environmentObject(appState)
-                            Divider().padding(.leading, 14)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-    }
-
-    private func flowCount(for deviceId: UUID) -> Int {
-        appState.danteFlows.filter { $0.fromDeviceId == deviceId || $0.toDeviceId == deviceId }.count
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-// MARK: - Device Row
+// MARK: - Matrix View
 
-private struct DeviceRow: View {
-    @ObservedObject var inst: NodeInstance
-    let comp: Component
-    let isSelected: Bool
-    let flowCount: Int
+private struct DanteMatrixView: View {
+    let txChannels: [DanteTXChannel]
+    let rxChannels: [DanteRXChannel]
+    @EnvironmentObject var appState: AppState
 
-    @State private var editingName = false
-    @State private var nameInput: String = ""
+    // Cell dimensions
+    private let cellW: CGFloat = 22
+    private let cellH: CGFloat = 22
+    private let txLabelWidth: CGFloat = 160
+    private let headerHeight: CGFloat = 80
+    private let rowHeight: CGFloat = 22
+
+    private var totalGridWidth: CGFloat  { txLabelWidth + CGFloat(rxChannels.count) * cellW }
+    private var totalGridHeight: CGFloat { headerHeight + CGFloat(txChannels.count) * rowHeight }
+
+    // Compact route check
+    private func isRouted(_ tx: DanteTXChannel, _ rx: DanteRXChannel) -> Bool {
+        appState.danteFlows.contains {
+            $0.fromDeviceId == tx.device.id && $0.fromPortIndex == tx.portIndex &&
+            $0.toDeviceId == rx.device.id && $0.toPortIndex == rx.portIndex
+        }
+    }
+
+    private func toggleRoute(_ tx: DanteTXChannel, _ rx: DanteRXChannel) {
+        if let flow = appState.danteFlows.first(where: {
+            $0.fromDeviceId == tx.device.id && $0.fromPortIndex == tx.portIndex &&
+            $0.toDeviceId == rx.device.id && $0.toPortIndex == rx.portIndex
+        }) {
+            appState.removeDanteFlow(id: flow.id)
+        } else {
+            appState.addDanteFlow(
+                fromDeviceId: tx.device.id, fromPortIndex: tx.portIndex,
+                toDeviceId: rx.device.id, toPortIndex: rx.portIndex
+            )
+        }
+    }
 
     var body: some View {
-        HStack(spacing: 10) {
-            // Category color dot
-            Circle()
-                .fill(Color.categoryColor(comp.category))
-                .frame(width: 8, height: 8)
+        VStack(spacing: 0) {
+            // Top legend bar
+            matrixLegend
 
-            VStack(alignment: .leading, spacing: 2) {
-                // Dante device name (editable)
-                if editingName {
-                    TextField("Device name", text: $nameInput, onCommit: {
-                        inst.danteDeviceName = nameInput.isEmpty ? nil : nameInput
-                        editingName = false
-                    })
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11, weight: .semibold))
-                    .onExitCommand { editingName = false }
-                } else {
-                    Text(inst.danteDeviceName ?? comp.name)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .onTapGesture(count: 2) {
-                            nameInput = inst.danteDeviceName ?? comp.name
-                            editingName = true
+            // Matrix: TX label column on the left + scrollable grid
+            HStack(spacing: 0) {
+                // Fixed left column: TX labels
+                VStack(spacing: 0) {
+                    // Blank corner cell (aligns with header height)
+                    cornerCell
+
+                    // TX rows
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 0) {
+                            txLabelColumn
                         }
-                }
-
-                HStack(spacing: 4) {
-                    if let ip = inst.ipAddress, !ip.isEmpty {
-                        Text(ip)
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundColor(.green)
                     }
-                    Text(comp.name)
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                }
+                .frame(width: txLabelWidth)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .overlay(Divider(), alignment: .trailing)
+
+                // Scrollable body: RX header + grid cells
+                ScrollView([.horizontal, .vertical]) {
+                    VStack(spacing: 0) {
+                        // RX column headers
+                        rxHeaderRow
+
+                        // Grid body: one row per TX channel
+                        ForEach(Array(txChannels.enumerated()), id: \.element.id) { txIdx, tx in
+                            HStack(spacing: 0) {
+                                ForEach(Array(rxChannels.enumerated()), id: \.element.id) { rxIdx, rx in
+                                    MatrixCell(
+                                        isRouted: isRouted(tx, rx),
+                                        sameDevice: tx.device.id == rx.device.id
+                                    )
+                                    .frame(width: cellW, height: rowHeight)
+                                    .onTapGesture {
+                                        guard tx.device.id != rx.device.id else { return }
+                                        toggleRoute(tx, rx)
+                                    }
+                                    .overlay(alignment: .trailing) {
+                                        // Column separator at device boundary
+                                        if rxIdx < rxChannels.count - 1,
+                                           rxChannels[rxIdx].device.id != rxChannels[rxIdx + 1].device.id {
+                                            Divider().opacity(0.4)
+                                        }
+                                    }
+                                }
+                            }
+                            .background(txIdx % 2 == 0
+                                ? Color.clear
+                                : Color.primary.opacity(0.03))
+                            .overlay(alignment: .bottom) {
+                                // Row separator at device boundary
+                                if txIdx < txChannels.count - 1,
+                                   txChannels[txIdx].device.id != txChannels[txIdx + 1].device.id {
+                                    Divider().opacity(0.4)
+                                }
+                            }
+                        }
+                    }
                 }
             }
+        }
+        .background(Color(nsColor: .textBackgroundColor))
+    }
+
+    // MARK: - Legend
+
+    private var matrixLegend: some View {
+        HStack(spacing: 16) {
+            Text("Dante Routing Matrix")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.secondary)
 
             Spacer()
 
-            if flowCount > 0 {
-                Text("\(flowCount)")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Color.green.opacity(0.8))
-                    .clipShape(Capsule())
+            HStack(spacing: 6) {
+                Circle().fill(Color.green).frame(width: 10, height: 10)
+                Text("Routed").font(.system(size: 11)).foregroundColor(.secondary)
             }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(isSelected ? Color.accentColor.opacity(0.08) : Color.clear)
-        .contentShape(Rectangle())
-    }
-}
-
-// MARK: - Flow Row
-
-private struct FlowRow: View {
-    let flow: DanteFlow
-    let devices: [(inst: NodeInstance, comp: Component)]
-    @EnvironmentObject var appState: AppState
-
-    private func deviceName(for id: UUID) -> String {
-        guard let item = devices.first(where: { $0.inst.id == id }) else { return "Unknown" }
-        return item.inst.danteDeviceName ?? item.comp.name
-    }
-
-    private func portLabel(deviceId: UUID, portIndex: Int, side: String) -> String {
-        guard let item = devices.first(where: { $0.inst.id == deviceId }) else { return "Port \(portIndex + 1)" }
-        let ports = item.inst.effectivePorts ?? item.comp.ports
-        let labels = side == "out" ? ports.outputs : ports.inputs
-        guard portIndex < labels.count else { return "Port \(portIndex + 1)" }
-        return labels[portIndex]
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            // Transmitter side
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(deviceName(for: flow.fromDeviceId))
-                    .font(.system(size: 11, weight: .semibold))
-                Text(portLabel(deviceId: flow.fromDeviceId, portIndex: flow.fromPortIndex, side: "out"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+            HStack(spacing: 6) {
+                Circle()
+                    .stroke(Color.secondary.opacity(0.4), lineWidth: 1)
+                    .frame(width: 10, height: 10)
+                Text("Not routed").font(.system(size: 11)).foregroundColor(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-
-            Image(systemName: "arrow.right")
-                .font(.system(size: 10))
-                .foregroundColor(Color.signalTypeColor("dante"))
-
-            // Receiver side
-            VStack(alignment: .leading, spacing: 2) {
-                Text(deviceName(for: flow.toDeviceId))
-                    .font(.system(size: 11, weight: .semibold))
-                Text(portLabel(deviceId: flow.toDeviceId, portIndex: flow.toPortIndex, side: "in"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+            HStack(spacing: 6) {
+                Rectangle()
+                    .fill(Color.primary.opacity(0.06))
+                    .frame(width: 10, height: 10)
+                Text("Same device").font(.system(size: 11)).foregroundColor(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Delete button
-            Button {
-                appState.removeDanteFlow(id: flow.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
-            .buttonStyle(.plain)
-            .padding(.trailing, 6)
+            Text("\(txChannels.count) TX  ·  \(rxChannels.count) RX  ·  \(appState.danteFlows.count) flows")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.secondary)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+        .overlay(Divider(), alignment: .bottom)
+    }
+
+    // MARK: - Corner
+
+    private var cornerCell: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("TX  ↓  /  RX  →")
+                .font(.system(size: 8, weight: .medium))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.top, 4)
+            Spacer()
+        }
+        .frame(width: txLabelWidth, height: headerHeight)
+        .overlay(Divider(), alignment: .bottom)
+    }
+
+    // MARK: - TX Label Column
+
+    private var txLabelColumn: some View {
+        ForEach(Array(txChannels.enumerated()), id: \.element.id) { idx, tx in
+            VStack(spacing: 0) {
+                // Device name header row — shown only for the first channel of each device
+                if idx == 0 || txChannels[idx - 1].device.id != tx.device.id {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.categoryColor(tx.comp.category))
+                            .frame(width: 5, height: 5)
+                        Text(tx.device.danteDeviceName ?? tx.comp.name)
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.top, 3)
+                    .frame(height: 14)
+                    .overlay(Divider().opacity(0.15), alignment: .bottom)
+                }
+
+                // Channel label row
+                HStack {
+                    Text(tx.label)
+                        .font(.system(size: 8))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .padding(.leading, 12)
+                    Spacer()
+                }
+                .frame(height: rowHeight)
+                .overlay(Divider().opacity(0.2), alignment: .bottom)
+            }
+        }
+    }
+
+    // MARK: - RX Header Row
+
+    private var rxHeaderRow: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(rxChannels.enumerated()), id: \.element.id) { idx, rx in
+                VStack(spacing: 0) {
+                    // Device name (only first channel of a device)
+                    if idx == 0 || rxChannels[idx - 1].device.id != rx.device.id {
+                        Text(rx.device.danteDeviceName ?? rx.comp.name)
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .rotationEffect(.degrees(-45))
+                            .frame(width: cellW, height: headerHeight - 20)
+                            .clipped()
+                    } else {
+                        Spacer()
+                            .frame(width: cellW, height: headerHeight - 20)
+                    }
+
+                    // Channel label (rotated)
+                    Text(rx.label)
+                        .font(.system(size: 7))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .rotationEffect(.degrees(-45))
+                        .frame(width: cellW, height: 20)
+                        .clipped()
+                }
+                .frame(width: cellW, height: headerHeight)
+                .overlay(alignment: .trailing) {
+                    if idx < rxChannels.count - 1,
+                       rxChannels[idx].device.id != rxChannels[idx + 1].device.id {
+                        Divider().opacity(0.4)
+                    }
+                }
+            }
+        }
+        .frame(height: headerHeight)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.8))
+        .overlay(Divider(), alignment: .bottom)
     }
 }
 
-// MARK: - Add Flow Sheet
+// MARK: - Matrix Cell
 
-struct AddDanteFlowSheet: View {
-    let devices: [(inst: NodeInstance, comp: Component)]
-    @EnvironmentObject var appState: AppState
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var fromDeviceId: UUID?
-    @State private var fromPortIndex: Int = 0
-    @State private var toDeviceId: UUID?
-    @State private var toPortIndex: Int = 0
-
-    private var fromDevice: (inst: NodeInstance, comp: Component)? {
-        devices.first { $0.inst.id == fromDeviceId }
-    }
-    private var toDevice: (inst: NodeInstance, comp: Component)? {
-        devices.first { $0.inst.id == toDeviceId }
-    }
-
-    private func outputPorts(for item: (inst: NodeInstance, comp: Component)) -> [String] {
-        let ports = item.inst.effectivePorts ?? item.comp.ports
-        // Only show Dante/network outputs
-        let types = item.inst.effectiveOutputTypes ?? item.comp.outputs
-        return zip(ports.outputs, types)
-            .filter { ["dante", "milan", "aes67", "avb", "network"].contains($0.1.lowercased()) }
-            .map { $0.0 }
-    }
-
-    private func inputPorts(for item: (inst: NodeInstance, comp: Component)) -> [String] {
-        let ports = item.inst.effectivePorts ?? item.comp.ports
-        let types = item.inst.effectiveInputTypes ?? item.comp.inputs
-        return zip(ports.inputs, types)
-            .filter { ["dante", "milan", "aes67", "avb", "network"].contains($0.1.lowercased()) }
-            .map { $0.0 }
-    }
-
-    private func outputPortIndex(label: String, for item: (inst: NodeInstance, comp: Component)) -> Int {
-        let ports = item.inst.effectivePorts ?? item.comp.ports
-        return ports.outputs.firstIndex(of: label) ?? 0
-    }
-
-    private func inputPortIndex(label: String, for item: (inst: NodeInstance, comp: Component)) -> Int {
-        let ports = item.inst.effectivePorts ?? item.comp.ports
-        return ports.inputs.firstIndex(of: label) ?? 0
-    }
-
-    private var canAdd: Bool {
-        fromDeviceId != nil && toDeviceId != nil && fromDeviceId != toDeviceId
-    }
+private struct MatrixCell: View {
+    let isRouted: Bool
+    let sameDevice: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Add Dante Flow")
-                .font(.system(size: 16, weight: .semibold))
-
-            // Transmitter picker
-            GroupBox("Transmitter (Source)") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Picker("Device", selection: $fromDeviceId) {
-                        Text("Select device…").tag(UUID?.none)
-                        ForEach(devices, id: \.inst.id) { item in
-                            Text(item.inst.danteDeviceName ?? item.comp.name)
-                                .tag(UUID?.some(item.inst.id))
-                        }
-                    }
-                    if let item = fromDevice {
-                        let outs = outputPorts(for: item)
-                        if !outs.isEmpty {
-                            Picker("Output", selection: $fromPortIndex) {
-                                ForEach(Array(outs.enumerated()), id: \.offset) { idx, label in
-                                    Text(label).tag(outputPortIndex(label: label, for: item))
-                                }
-                            }
-                        } else {
-                            Text("No network outputs on this device")
-                                .font(.caption).foregroundColor(.secondary)
-                        }
-                    }
-                }
-                .padding(4)
+        ZStack {
+            if sameDevice {
+                Color.primary.opacity(0.06)
             }
 
-            // Receiver picker
-            GroupBox("Receiver (Destination)") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Picker("Device", selection: $toDeviceId) {
-                        Text("Select device…").tag(UUID?.none)
-                        ForEach(devices.filter { $0.inst.id != fromDeviceId }, id: \.inst.id) { item in
-                            Text(item.inst.danteDeviceName ?? item.comp.name)
-                                .tag(UUID?.some(item.inst.id))
-                        }
-                    }
-                    if let item = toDevice {
-                        let ins = inputPorts(for: item)
-                        if !ins.isEmpty {
-                            Picker("Input", selection: $toPortIndex) {
-                                ForEach(Array(ins.enumerated()), id: \.offset) { idx, label in
-                                    Text(label).tag(inputPortIndex(label: label, for: item))
-                                }
-                            }
-                        } else {
-                            Text("No network inputs on this device")
-                                .font(.caption).foregroundColor(.secondary)
-                        }
-                    }
+            if !sameDevice {
+                if isRouted {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 10, height: 10)
+                } else {
+                    Circle()
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                        .frame(width: 8, height: 8)
                 }
-                .padding(4)
-            }
-
-            HStack {
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.escape)
-                Spacer()
-                Button("Add Flow") {
-                    if let from = fromDeviceId, let to = toDeviceId {
-                        appState.addDanteFlow(fromDeviceId: from, fromPortIndex: fromPortIndex,
-                                              toDeviceId: to, toPortIndex: toPortIndex)
-                    }
-                    dismiss()
-                }
-                .keyboardShortcut(.return)
-                .buttonStyle(.borderedProminent)
-                .disabled(!canAdd)
             }
         }
-        .padding(24)
-        .frame(width: 400)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
     }
 }
 
@@ -412,10 +372,9 @@ struct AddDanteFlowSheet: View {
 private extension AppState {
     static var dantePreviewState: AppState {
         let s = AppState()
-        s.addInstance(type: "mixer", position: CGPoint(x: 100, y: 100))
-        s.addInstance(type: "dante_switch", position: CGPoint(x: 300, y: 100))
-        s.addInstance(type: "wireless_rx", position: CGPoint(x: 500, y: 100))
-        s.addInstance(type: "power_amp", position: CGPoint(x: 700, y: 100))
+        s.addInstance(type: "mixer_ah_dlive_cdm32", position: CGPoint(x: 100, y: 100))
+        s.addInstance(type: "network_switch_cisco_SG350-28P", position: CGPoint(x: 300, y: 100))
+        s.addInstance(type: "configurable_io_2u", position: CGPoint(x: 500, y: 100))
         return s
     }
 
@@ -427,36 +386,25 @@ private extension AppState {
                 fromDeviceId: devices[0].inst.id, fromPortIndex: 0,
                 toDeviceId: devices[1].inst.id, toPortIndex: 0
             )
-            s.addDanteFlow(
-                fromDeviceId: devices[0].inst.id, fromPortIndex: 1,
-                toDeviceId: devices[2 % devices.count].inst.id, toPortIndex: 0
-            )
         }
         return s
     }
 }
 
-#Preview("Dante Controller – Empty") {
+#Preview("Dante Matrix – Empty") {
     DanteControllerView()
         .environmentObject(AppState())
-        .frame(width: 800, height: 500)
+        .frame(width: 900, height: 500)
 }
 
-#Preview("Dante Controller – Devices") {
+#Preview("Dante Matrix – With Devices") {
     DanteControllerView()
         .environmentObject(AppState.dantePreviewState)
-        .frame(width: 900, height: 550)
+        .frame(width: 900, height: 600)
 }
 
-#Preview("Dante Controller – With Flows") {
+#Preview("Dante Matrix – With Flows") {
     DanteControllerView()
         .environmentObject(AppState.danteWithFlowsState)
-        .frame(width: 900, height: 550)
-}
-
-#Preview("Add Dante Flow Sheet") {
-    let state = AppState.dantePreviewState
-    let devices = state.allNetworkInstances
-    AddDanteFlowSheet(devices: devices)
-        .environmentObject(state)
+        .frame(width: 900, height: 600)
 }

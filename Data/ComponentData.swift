@@ -214,16 +214,20 @@ enum Components {
             slotCount: 2),
 
         Component(id: "mixer_yamaha",
-            name: "Yamaha RIVAGE PM7",
+            name: "Yamaha RIVAGE PM10",
                 iconName: "console",
             category: "Consoles",
                 manufacturer: "Yamaha",
-                model: "PM7",
+                model: "PM10",
             inputGroups: [],
             outputGroups: [],
-            desc: "RIVAGE PM engine/surface system — I/O via HY and Mini-YGDAI expansion",
+            desc: "RIVAGE PM10 surface — all I/O via HY expansion cards (use RPio engine for local I/O)",
             level: "Line Level",
-            slotCount: 6),
+            slotCount: 6,
+            compatibleCardIds: [
+                "card_yamaha_hy256_tl", "card_yamaha_hy144_d", "card_yamaha_hy144_d_src",
+                "card_yamaha_hy128_md", "card_yamaha_my8_ae96s", "card_yamaha_ry16_ae"
+            ]),
 
         Component(id: "mixer_ssl",
             name: "SSL Live L550 Plus",
@@ -278,6 +282,20 @@ enum Components {
             desc: "2U configurable I/O — tap gear icon to change port count and signal type",
             level: "Line Level",
             rackUnits: 2),
+
+        Component(id: "aes_terminator",
+            name: "AES Terminator (110Ω)",
+                iconName: "aes",
+            category: "Patching",
+                manufacturer: "Generic",
+                model: "AES Terminator",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 1, signalType: "aes")
+            ],
+            outputGroups: [],
+            desc: "110Ω AES/EBU terminator — required at the end of an AES daisy chain",
+            level: "Digital",
+            rackUnits: 1),
 
         // ── Recording ────────────────────────────────────────
 
@@ -420,8 +438,11 @@ enum Components {
             inputGroups: [
                 PortGroup(connector: "Speakon NL4", count: 2, signalType: "speaker")
             ],
-            outputGroups: [],
-            desc: "Line array loudspeaker element",
+            outputGroups: [
+                // Loop-through outputs for cabinet chaining
+                PortGroup(connector: "Speakon NL4", count: 2, signalType: "speaker", isBidirectional: true)
+            ],
+            desc: "Line array loudspeaker element, 2× Speakon NL4 (in + loop-through)",
             level: "Speaker Level"),
 
         Component(id: "speakers_db",
@@ -1306,6 +1327,239 @@ enum Components {
             desc: "16x16 AES/EBU RY card",
             level: "Digital",
             isSlotCard: true),
+
+        // ── Allen & Heath dLive ──────────────────────────────
+
+        Component(id: "mixer_ah_dlive_cdm32",
+            name: "Allen & Heath dLive CDM32",
+                iconName: "mixer",
+            category: "Consoles",
+                manufacturer: "Allen & Heath",
+                model: "dLive CDM32",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 32, signalType: "mic"),
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            outputGroups: [
+                PortGroup(connector: "XLR", count: 16, signalType: "line"),
+                PortGroup(connector: "AES DB25", count: 2, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel),
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            desc: "dLive CDM32 surface — 32 faders, 20\" touchscreen, dLive MixRack required",
+            level: "Line Level",
+            slotCount: 4,
+            compatibleCardIds: ["card_ah_dx168", "card_ah_mo16", "card_ah_av8"]),
+
+        Component(id: "mixer_ah_dm64",
+            name: "Allen & Heath DM64 MixRack",
+                iconName: "rack",
+            category: "Stage Racks",
+                manufacturer: "Allen & Heath",
+                model: "DM64",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 64, signalType: "mic"),
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            outputGroups: [
+                PortGroup(connector: "XLR", count: 32, signalType: "line"),
+                PortGroup(connector: "AES DB25", count: 4, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel),
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            desc: "64-channel dLive MixRack — 64 mic/line inputs, MADI, Dante, 4 I/O card slots",
+            level: "Line Level",
+            rackUnits: 4,
+            slotCount: 6),
+
+        // A&H dLive I/O Cards
+        Component(id: "card_ah_dx168",
+            name: "A&H DX168 Remote I/O",
+                iconName: "interface",
+            category: "Expansion Cards",
+                manufacturer: "Allen & Heath",
+                model: "DX168",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 16, signalType: "mic")
+            ],
+            outputGroups: [
+                PortGroup(connector: "XLR", count: 8, signalType: "line")
+            ],
+            desc: "16-in/8-out remote I/O card for dLive",
+            level: "Mic Level",
+            isSlotCard: true),
+
+        // ── DiGiCo Quantum 338 ──────────────────────────────
+
+        Component(id: "mixer_digico_q338",
+            name: "DiGiCo Quantum 338",
+                iconName: "mixer",
+            category: "Consoles",
+                manufacturer: "DiGiCo",
+                model: "Quantum 338",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 12, signalType: "mic"),
+                PortGroup(connector: "AES DB25", count: 4, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel),
+                PortGroup(connector: "MADI BNC", count: 4, signalType: "madi"),
+                PortGroup(connector: "MADI Optical", count: 4, signalType: "madi")
+            ],
+            outputGroups: [
+                PortGroup(connector: "XLR", count: 12, signalType: "line"),
+                PortGroup(connector: "AES DB25", count: 4, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel),
+                PortGroup(connector: "MADI BNC", count: 4, signalType: "madi"),
+                PortGroup(connector: "MADI Optical", count: 4, signalType: "madi")
+            ],
+            desc: "338-channel Quantum console — 4 DMI slots, MADI, AES, Dante via card",
+            level: "Line Level",
+            slotCount: 4,
+            compatibleCardIds: [
+                "card_digico_dmi_dante64_96", "card_digico_dmi_madi_b",
+                "card_digico_dmi_aes", "card_digico_aviom_d16c"
+            ]),
+
+        // ── Yamaha CL / QL Series ────────────────────────────
+
+        Component(id: "mixer_yamaha_cl5",
+            name: "Yamaha CL5",
+                iconName: "mixer",
+            category: "Consoles",
+                manufacturer: "Yamaha",
+                model: "CL5",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 0, signalType: "mic"),   // no local I/O; via HY cards
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi")
+            ],
+            outputGroups: [
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi")
+            ],
+            desc: "Yamaha CL5 — 72 mono + 8 stereo channels, 4 HY expansion slots, MADI",
+            level: "Line Level",
+            slotCount: 4,
+            compatibleCardIds: [
+                "card_yamaha_hy256_tl", "card_yamaha_hy144_d", "card_yamaha_hy144_d_src",
+                "card_yamaha_hy128_md", "card_yamaha_my8_ae96s", "card_yamaha_ry16_ae"
+            ]),
+
+        Component(id: "mixer_yamaha_ql5",
+            name: "Yamaha QL5",
+                iconName: "mixer",
+            category: "Consoles",
+                manufacturer: "Yamaha",
+                model: "QL5",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 0, signalType: "mic"),
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            outputGroups: [
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            desc: "Yamaha QL5 — 32 mono + 8 stereo, 2 HY expansion slots, built-in Dante",
+            level: "Line Level",
+            slotCount: 2,
+            compatibleCardIds: [
+                "card_yamaha_hy144_d", "card_yamaha_hy144_d_src",
+                "card_yamaha_my8_ae96s", "card_yamaha_ry16_ae"
+            ]),
+
+        // ── Yamaha RIVAGE PM7 (split engine/surface) ─────────
+
+        Component(id: "mixer_yamaha_pm7_surface",
+            name: "Yamaha RIVAGE PM7 Surface",
+                iconName: "mixer",
+            category: "Consoles",
+                manufacturer: "Yamaha",
+                model: "PM7 Surface",
+            inputGroups: [],
+            outputGroups: [],
+            desc: "PM7 control surface — connects to RPio622/RPio222 engine via TWINLANe optical",
+            level: "Digital Control",
+            slotCount: 2,
+            compatibleCardIds: ["card_yamaha_hy256_tl", "card_yamaha_hy144_d"]),
+
+        Component(id: "mixer_yamaha_pm7_engine",
+            name: "Yamaha RIVAGE PM7 Engine",
+                iconName: "rack",
+            category: "Stage Racks",
+                manufacturer: "Yamaha",
+                model: "RPio622",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 24, signalType: "mic"),
+                PortGroup(connector: "AES DB25", count: 2, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel),
+                PortGroup(connector: "TWINLANe Optical", count: 2, signalType: "fiber")
+            ],
+            outputGroups: [
+                PortGroup(connector: "XLR", count: 22, signalType: "line"),
+                PortGroup(connector: "AES DB25", count: 2, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel),
+                PortGroup(connector: "TWINLANe Optical", count: 2, signalType: "fiber")
+            ],
+            desc: "RIVAGE RPio622 engine — 24 mic/22 line local I/O, TWINLANe to PM7 surface, 4 HY slots",
+            level: "Line Level",
+            rackUnits: 4,
+            slotCount: 4,
+            compatibleCardIds: [
+                "card_yamaha_hy256_tl", "card_yamaha_hy144_d", "card_yamaha_hy144_d_src",
+                "card_yamaha_hy128_md", "card_yamaha_my8_ae96s", "card_yamaha_ry16_ml_silk",
+                "card_yamaha_ry16_da", "card_yamaha_ry16_ae"
+            ]),
+
+        // ── Avid S6L System ──────────────────────────────────
+
+        Component(id: "mixer_avid_s6l",
+            name: "Avid S6L-32D Surface",
+                iconName: "mixer",
+            category: "Consoles",
+                manufacturer: "Avid",
+                model: "S6L-32D",
+            inputGroups: [
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            outputGroups: [
+                PortGroup(connector: "MADI BNC", count: 2, signalType: "madi"),
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            desc: "Avid S6L-32D — 32 faders, requires E6L engine",
+            level: "Line Level"),
+
+        Component(id: "mixer_avid_e6l",
+            name: "Avid E6L-192 Engine",
+                iconName: "rack",
+            category: "Stage Racks",
+                manufacturer: "Avid",
+                model: "E6L-192",
+            inputGroups: [
+                PortGroup(connector: "MADI BNC", count: 4, signalType: "madi"),
+                PortGroup(connector: "AES DB25", count: 4, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel),
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            outputGroups: [
+                PortGroup(connector: "MADI BNC", count: 4, signalType: "madi"),
+                PortGroup(connector: "AES DB25", count: 4, signalType: "aes", channelsPerPort: 8, bundleStyle: .multichannel),
+                PortGroup(connector: "Dante EtherCon", count: 2, signalType: "dante", transport: "Dante", isNetwork: true, bundleStyle: .network)
+            ],
+            desc: "Avid E6L-192 engine — 192 channels, MADI, AES, Dante, HDX DSP cards",
+            level: "Line Level",
+            rackUnits: 6),
+
+        Component(id: "mixer_avid_stage64",
+            name: "Avid Stage 64",
+                iconName: "rack",
+            category: "Stage Boxes",
+                manufacturer: "Avid",
+                model: "Stage 64",
+            inputGroups: [
+                PortGroup(connector: "XLR", count: 64, signalType: "mic"),
+                PortGroup(connector: "AVB EtherCon", count: 2, signalType: "avb", transport: "AVB", isNetwork: true, bundleStyle: .network)
+            ],
+            outputGroups: [
+                PortGroup(connector: "XLR", count: 16, signalType: "line"),
+                PortGroup(connector: "AVB EtherCon", count: 2, signalType: "avb", transport: "AVB", isNetwork: true, bundleStyle: .network)
+            ],
+            desc: "64-input AVB stage rack — connects to E6L engine or S6L surface",
+            level: "Mic Level",
+            rackUnits: 3),
     ]
 }
 

@@ -9,12 +9,11 @@ struct RFPlannerView: View {
             PhaseModeBar()
                 .environmentObject(rfState)
             Divider()
-            HStack(spacing: 0) {
+            HSplitView {
                 VenueColumnView()
-                    .frame(maxWidth: .infinity)
-                Divider()
+                    .frame(minWidth: 240)
                 GearListColumnView()
-                    .frame(maxWidth: .infinity)
+                    .frame(minWidth: 200)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

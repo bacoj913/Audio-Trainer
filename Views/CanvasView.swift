@@ -9,6 +9,8 @@ struct CanvasView: View {
     @State private var isDragTarget = false
     @State private var scaleAtGestureStart: CGFloat = 1.0
     @State private var panStartOffset: CGSize = .zero
+    /// Incremented after zoom/pan to force port anchor preference re-reporting
+    @State private var layoutVersion: Int = 0
 
     var body: some View {
         GeometryReader { geo in
@@ -35,6 +37,7 @@ struct CanvasView: View {
                             }
                             .onEnded { _ in
                                 panStartOffset = appState.canvasOffset
+                                layoutVersion += 1
                             }
                     )
                 // Scaled & panned canvas content
@@ -85,6 +88,7 @@ struct CanvasView: View {
                 .scaleEffect(appState.canvasScale, anchor: .topLeading)
                 .offset(appState.canvasOffset)
                 .coordinateSpace(name: "canvas")
+                .id(layoutVersion)
             }
             .contentShape(Rectangle())
             .onContinuousHover { phase in
@@ -105,6 +109,7 @@ struct CanvasView: View {
                     }
                     .onEnded { _ in
                         scaleAtGestureStart = appState.canvasScale
+                        layoutVersion += 1
                     }
             )
             .onPreferenceChange(PortAnchorPref.self) { positions in

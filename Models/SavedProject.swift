@@ -59,10 +59,27 @@ struct SavedDanteFlow: Codable {
 // MARK: - Configurable I/O override
 
 struct SavedIOConfig: Codable {
-    var inputCount: Int
-    var inputSignalType: String
-    var outputCount: Int
-    var outputSignalType: String
+    // New format: groups of (count, signalType) per direction
+    var inputGroups: [SavedIOPortGroup]
+    var outputGroups: [SavedIOPortGroup]
+
+    init(ioConfig: IOConfig) {
+        self.inputGroups  = ioConfig.inputGroups.map  { SavedIOPortGroup(count: $0.count, signalType: $0.signalType, labelPrefix: $0.labelPrefix) }
+        self.outputGroups = ioConfig.outputGroups.map { SavedIOPortGroup(count: $0.count, signalType: $0.signalType, labelPrefix: $0.labelPrefix) }
+    }
+
+    func toIOConfig() -> IOConfig {
+        IOConfig(
+            inputGroups:  inputGroups.map  { IOPortGroup(count: $0.count, signalType: $0.signalType, labelPrefix: $0.labelPrefix) },
+            outputGroups: outputGroups.map { IOPortGroup(count: $0.count, signalType: $0.signalType, labelPrefix: $0.labelPrefix) }
+        )
+    }
+}
+
+struct SavedIOPortGroup: Codable {
+    var count: Int
+    var signalType: String
+    var labelPrefix: String = ""
 }
 
 // MARK: - Connection

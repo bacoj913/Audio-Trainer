@@ -67,7 +67,7 @@ func rackGearColumnSpans(
     outputCount: Int
 ) -> (left: ClosedRange<CGFloat>, right: ClosedRange<CGFloat>) {
     let outerInset: CGFloat = 24
-    let centerGap: CGFloat = 110
+    let centerGap: CGFloat = 80
 
     let usableWidth = max(width - (outerInset * 2) - centerGap, 120)
 
@@ -377,9 +377,13 @@ struct RackCanvasView: View {
                         guard let data = data as? Data,
                               let typeId = String(data: data, encoding: .utf8) else { return }
                         DispatchQueue.main.async {
+                            let comp = Components.all[typeId]
+                            let ruSize = max(comp?.rackUnits ?? 1, 1)
                             let scrollY = max(0, location.y - 12)
                             let targetSlot = Int(scrollY / unitHeight)
-                            let clamped = min(targetSlot, totalUnits - 1)
+                            // Clamp so the item fits within the rack
+                            let maxSlot = max(0, totalUnits - ruSize)
+                            let clamped = min(max(targetSlot, 0), maxSlot)
                             let inst = appState.addInstance(
                                 type: typeId,
                                 position: CGPoint(x: 0, y: CGFloat(clamped) * unitHeight)
@@ -584,6 +588,7 @@ struct RackCanvasFacePort: View {
 
     @EnvironmentObject var appState: AppState
     @State private var showingVlanPicker = false
+    @State private var showingBindingPostPicker = false
 
     private var vlanId: Int { instance.portVlanTags[portIndex] ?? 0 }
     private var vlanColor: Color { Color.vlanColor(vlanId) }
@@ -702,12 +707,42 @@ struct RackCanvasFacePort: View {
             VlanPickerPopover(instance: instance, portIndex: portIndex, label: label)
                 .environmentObject(appState)
         }
+        .popover(isPresented: $showingBindingPostPicker, arrowEdge: .bottom) {
+            BananaOrientationPicker(
+                instance: instance,
+                portIndex: portIndex,
+                side: side,
+                onSelect: { orientation in
+                    showingBindingPostPicker = false
+                    instance.bananaOrientations[portIndex] = orientation
+                    if side == "out" {
+                        appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
+                    } else if isConnecting {
+                        appState.finishConnecting(toId: instance.id, toPortIndex: portIndex)
+                    }
+                }
+            )
+            .environmentObject(appState)
+        }
         .contextMenu {
             if isNetworkSwitch {
                 Button("Set VLAN Tag…") { showingVlanPicker = true }
             }
         }
         .onTapGesture {
+            // Binding post exercise mode: show orientation picker
+            if bundleStyle == .bindingPost && appState.mode == .exercise {
+                if side == "out" && !isConnecting {
+                    DispatchQueue.main.async { showingBindingPostPicker = true }
+                } else if side == "out" && isSource {
+                    appState.cancelConnecting()
+                } else if side == "in" && isConnecting {
+                    DispatchQueue.main.async { showingBindingPostPicker = true }
+                } else if side == "in" && isConnected {
+                    appState.disconnectInput(instanceId: instance.id, portIndex: portIndex)
+                }
+                return
+            }
             if side == "out" {
                 if !isConnecting {
                     appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
@@ -801,6 +836,8 @@ private struct RackSlotCardFace: View {
     let slotIndex: Int
     let arrangement: RackSlotArrangement
 
+    @State private var showingCardPicker = false
+
     private var slotCard: SlotCard? {
         instance.slotCards[slotIndex]
     }
@@ -845,6 +882,8 @@ private struct RackSlotCardFace: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
+                Color.clear // ensures GeometryReader fills available space
+
                 RoundedRectangle(cornerRadius: 5)
                     .fill(Color.primary.opacity(0.04))
                 RoundedRectangle(cornerRadius: 5)
@@ -867,9 +906,18 @@ private struct RackSlotCardFace: View {
                     .padding(.horizontal, 8)
                     .padding(.top, arrangement == .vertical ? 3 : 0)
                 } else {
-                    Text("Empty")
-                        .font(.system(size: 8))
-                        .foregroundColor(.secondary.opacity(0.6))
+                    Button {
+                        showingCardPicker = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle")
+                                .font(.system(size: 9))
+                            Text("Add Card")
+                                .font(.system(size: 8))
+                        }
+                        .foregroundColor(.secondary.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 switch arrangement {
@@ -961,6 +1009,11 @@ private struct RackSlotCardFace: View {
                         )
                     }
                 }
+            }
+        }
+        .sheet(isPresented: $showingCardPicker) {
+            SlotCardPickerSheet(slotIndex: slotIndex, hostComp: hostComp) { cardType in
+                instance.slotCards[slotIndex] = SlotCard(slotNumber: slotIndex, cardType: cardType)
             }
         }
     }
@@ -1071,7 +1124,10 @@ struct RackGearItem: View {
     }
 
     private var headerHeight: CGFloat {
-        isCompact1UNetwork ? 20 : 28
+        if isCompact1UNetwork { return 20 }
+        // Reduce header for 1RU non-network devices so ports have more body space
+        if comp.rackUnits == 1 && !isCompact1UNetwork { return 22 }
+        return 28
     }
 
     private var currentRackSlot: Int {
@@ -1109,10 +1165,7 @@ struct RackGearItem: View {
     }
 
     private var chassisFaceRowCount: Int {
-        if comp.slotCount > 0 {
-            return 1
-        }
-        return max(comp.rackUnits - 1, 1)
+        max(comp.rackUnits - 1, 1)
     }
     
     private var slottedBuiltInPortsRowY: CGFloat {
@@ -1299,17 +1352,15 @@ struct RackGearItem: View {
                         let inputRow = inputRows.indices.contains(row) ? inputRows[row] : []
                         let outputRow = outputRows.indices.contains(row) ? outputRows[row] : []
 
-                        let rowY = comp.slotCount > 0
-                            ? slottedBuiltInPortsRowY
-                            : min(
-                                rackGearRowY(
-                                    row: row,
-                                    totalRows: visualRows,
-                                    height: max(geo.size.height - chassisFaceTopInset, 20),
-                                    headerHeight: 0
-                                ) + chassisFaceTopInset,
-                                geo.size.height - 8
-                            )
+                        let rowY = min(
+                            rackGearRowY(
+                                row: row,
+                                totalRows: visualRows,
+                                height: max(geo.size.height - chassisFaceTopInset, 20),
+                                headerHeight: 0
+                            ) + chassisFaceTopInset,
+                            geo.size.height - 8
+                        )
                         
                         ForEach(Array(inputRow.enumerated()), id: \.element) { rowIndex, originalIndex in
                             let port = inputPorts[originalIndex]
@@ -1421,44 +1472,28 @@ struct IOConfigPopoverView: View {
         ("AES", "aes"),
         ("MADI", "madi"),
         ("Dante", "dante"),
+        ("Milan", "milan"),
         ("Fiber", "fiber"),
         ("Optical", "optical"),
         ("RF", "rf"),
-        ("Speaker", "speaker")
+        ("Speaker", "speaker"),
+        ("Network", "network")
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("Configure I/O")
                 .font(.system(size: 13, weight: .semibold))
 
-            GroupBox("Inputs") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Stepper("Count: \(config.inputCount)", value: $config.inputCount, in: 1...32)
-                        .font(.system(size: 12))
-                    Picker("Type", selection: $config.inputSignalType) {
-                        ForEach(signalTypes, id: \.value) { item in
-                            Text(item.label).tag(item.value)
-                        }
-                    }
-                    .font(.system(size: 12))
-                }
-                .padding(.vertical, 4)
-            }
+            portGroupSection(
+                title: "Inputs",
+                groups: $config.inputGroups
+            )
 
-            GroupBox("Outputs") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Stepper("Count: \(config.outputCount)", value: $config.outputCount, in: 1...32)
-                        .font(.system(size: 12))
-                    Picker("Type", selection: $config.outputSignalType) {
-                        ForEach(signalTypes, id: \.value) { item in
-                            Text(item.label).tag(item.value)
-                        }
-                    }
-                    .font(.system(size: 12))
-                }
-                .padding(.vertical, 4)
-            }
+            portGroupSection(
+                title: "Outputs",
+                groups: $config.outputGroups
+            )
 
             HStack {
                 Spacer()
@@ -1466,8 +1501,8 @@ struct IOConfigPopoverView: View {
                     instance.ioConfig = config
                     appState.clampConnections(
                         for: instance.id,
-                        inputCount: config.inputCount,
-                        outputCount: config.outputCount
+                        inputCount: config.totalInputCount,
+                        outputCount: config.totalOutputCount
                     )
                 }
                 .buttonStyle(.borderedProminent)
@@ -1475,9 +1510,62 @@ struct IOConfigPopoverView: View {
             }
         }
         .padding(16)
-        .frame(width: 240)
+        .frame(width: 280)
         .onAppear {
             config = instance.ioConfig ?? IOConfig()
+        }
+    }
+
+    @ViewBuilder
+    private func portGroupSection(title: String, groups: Binding<[IOPortGroup]>) -> some View {
+        let count = groups.wrappedValue.count
+        GroupBox(title) {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(0..<count, id: \.self) { idx in
+                    HStack(spacing: 6) {
+                        // Channel count stepper
+                        Stepper(value: groups[idx].count, in: 1...64) {
+                            Text("\(groups.wrappedValue[idx].count)ch")
+                                .font(.system(size: 11, design: .monospaced))
+                                .frame(width: 38, alignment: .trailing)
+                        }
+
+                        // Signal type picker
+                        Picker("", selection: groups[idx].signalType) {
+                            ForEach(signalTypes, id: \.value) { item in
+                                Text(item.label).tag(item.value)
+                            }
+                        }
+                        .labelsHidden()
+                        .font(.system(size: 11))
+                        .frame(maxWidth: .infinity)
+
+                        // Remove button (only when more than 1 group)
+                        if count > 1 {
+                            Button {
+                                groups.wrappedValue.remove(at: idx)
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundColor(.red.opacity(0.7))
+                                    .font(.system(size: 13))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Add group button
+                Button {
+                    groups.wrappedValue.append(IOPortGroup(count: 8, signalType: "line"))
+                } label: {
+                    Label("Add group", systemImage: "plus.circle")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.blue)
+                .padding(.top, 2)
+            }
+            .padding(.vertical, 4)
         }
     }
 }

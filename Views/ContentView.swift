@@ -8,7 +8,6 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             TitleBarView()
-            ToolbarBarView()
             AppBodyView()
         }
         .preferredColorScheme(appState.isDarkMode ? .dark : .light)
@@ -175,31 +174,35 @@ struct AppBodyView: View {
                 IntercomPlannerView()
                     .environmentObject(appState.intercomState)
             default:
-                HStack(spacing: 0) {
-                    SidebarView()
-                        .frame(width: 210)
-                    Divider()
-                    // Canvas area: tab bar + canvas/rack/dante view
-                    VStack(spacing: 0) {
-                        // Always show tab bar so Dante tab is always reachable
-                        CanvasTabBar()
-                        // Route to the right view
-                        if appState.isDanteControllerActive {
-                            DanteControllerView()
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else if appState.activeTab.parentRackInstanceId != nil {
-                            RackCanvasView()
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else {
-                            CanvasView()
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .clipped()
+                VStack(spacing: 0) {
+                    ToolbarBarView()
+                    HStack(spacing: 0) {
+                        SidebarView()
+                            .frame(width: 210)
+                        Divider()
+                        // Canvas area: tab bar + canvas/rack/dante view
+                        VStack(spacing: 0) {
+                            // Always show tab bar so Dante tab is always reachable
+                            CanvasTabBar()
+                            // Route to the right view
+                            if appState.isDanteControllerActive {
+                                DanteControllerView()
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            } else if appState.activeTab.parentRackInstanceId != nil {
+                                RackCanvasView()
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            } else {
+                                CanvasView()
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .clipped()
+                            }
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        Divider()
+                        InspectorView()
+                            .frame(width: 220)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    Divider()
-                    InspectorView()
-                        .frame(width: 220)
                 }
             }
         }

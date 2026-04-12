@@ -23,6 +23,7 @@ struct RackDisplayPort: Identifiable {
     let signalType: String
     let bundleStyle: PortGroup.BundleStyle
     let portIndexes: [Int]
+    let isBidirectional: Bool
 }
 
 // MARK: - Helpers
@@ -68,7 +69,12 @@ func standardNodeHeight(for instance: NodeInstance, comp: Component) -> CGFloat 
         + NodeView.standardBottomPadding
 }
 func standardNodeSlotOffset(for comp: Component) -> CGFloat {
-    comp.slotCount > 0 ? standardNodeSlotSectionHeight(for: comp) - 14 : 0
+    // Only add an offset when the device has BOTH slots AND base ports.
+    // Slot-only devices (e.g. RIVAGE PM7 with no built-in I/O) need zero offset
+    // so the slot section doesn't shift the port body upward.
+    guard comp.slotCount > 0 else { return 0 }
+    let hasBasePorts = !comp.ports.inputs.isEmpty || !comp.ports.outputs.isEmpty
+    return hasBasePorts ? standardNodeSlotSectionHeight(for: comp) - 14 : 0
 }
 /// Estimated text width for layout sizing without exact text measurement.
 /// - Parameters:
@@ -195,11 +201,16 @@ func makeRackDisplayPorts(
     }
 
     return orderedKeys.map { key in
-        RackDisplayPort(
+        let sType = groupedSignalType[key] ?? key
+        let normalized = sType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let bidir = ["dante", "aes67", "milan", "avb", "network", "networkaudio"].contains(normalized)
+            || groupedBundleStyle[key] == .network
+        return RackDisplayPort(
             side: side,
-            signalType: groupedSignalType[key] ?? key,
+            signalType: sType,
             bundleStyle: groupedBundleStyle[key] ?? .single,
-            portIndexes: groupedIndexes[key] ?? []
+            portIndexes: groupedIndexes[key] ?? [],
+            isBidirectional: bidir
         )
     }
 }
@@ -325,6 +336,52 @@ func makeVisualPorts(labels: [String], signalTypes: [String]) -> [VisualPort] {
         )
     }
 }
+// MARK: - Slot-Simplified Port Helpers
+
+/// One entry per installed slot card, suitable for showing one dot per slot in standard canvas view.
+struct SlotDisplayPort {
+    let label: String
+    let portIndex: Int
+    let signalType: String
+    let bundleStyle: PortGroup.BundleStyle
+}
+
+/// Returns one SlotDisplayPort per installed slot card for the given side.
+/// Port indices refer to positions in the merged effectivePorts list.
+func slotSimplifiedPorts(instance: NodeInstance, comp: Component, side: String) -> [SlotDisplayPort] {
+    guard comp.slotCount > 0 else { return [] }
+    let baseCount = side == "in" ? comp.ports.inputs.count : comp.ports.outputs.count
+    var offset = baseCount
+    var results: [SlotDisplayPort] = []
+    for slotIdx in 0..<comp.slotCount {
+        if let card = instance.slotCards[slotIdx],
+           let cardComp = Components.all[card.cardType] {
+            let cardPortCount = side == "in" ? cardComp.ports.inputs.count : cardComp.ports.outputs.count
+            let signalType = side == "in"
+                ? (cardComp.inputs.first ?? "line")
+                : (cardComp.outputs.first ?? "line")
+            let normalized = signalType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let bundle: PortGroup.BundleStyle
+            switch normalized {
+            case "dante", "aes67", "milan", "avb", "network": bundle = .network
+            case "aes", "aes3":                               bundle = .stereoPair
+            case "madi":                                       bundle = .multichannel
+            case "bindingpost":                                bundle = .bindingPost
+            default:                                           bundle = .single
+            }
+            results.append(SlotDisplayPort(
+                label: "Slot \(slotIdx + 1)",
+                portIndex: offset,
+                signalType: signalType,
+                bundleStyle: bundle
+            ))
+            offset += cardPortCount
+        }
+        // Empty slot contributes no ports to the offset (no card installed)
+    }
+    return results
+}
+
 // MARK: - Node View
 struct NodeView: View {
     @ObservedObject var instance: NodeInstance
@@ -481,24 +538,46 @@ struct StandardNodeView: View {
         // Must be BEFORE .offset() so dots move with the card during drag
         .overlay {
             GeometryReader { geo in
+                // For slotted devices: show base ports + one dot per installed slot card
+                // For regular devices: show all effective ports individually
                 let effectivePorts = instance.effectivePorts ?? comp.ports
-                let inputPorts = makeVisualPorts(
-                    labels: effectivePorts.inputs,
-                    signalTypes: instance.effectiveInputTypes ?? comp.inputs
-                )
-                let outputPorts = makeVisualPorts(
-                    labels: effectivePorts.outputs,
-                    signalTypes: instance.effectiveOutputTypes ?? comp.outputs
-                )
+                let (inputPorts, inputPortIndexes): ([VisualPort], [Int])
+                let (outputPorts, outputPortIndexes): ([VisualPort], [Int])
+
+                if comp.slotCount > 0 {
+                    // Base device ports
+                    let baseInputPorts = makeVisualPorts(
+                        labels: comp.ports.inputs,
+                        signalTypes: comp.inputs
+                    )
+                    let baseOutputPorts = makeVisualPorts(
+                        labels: comp.ports.outputs,
+                        signalTypes: comp.outputs
+                    )
+                    // Slot-simplified ports (one per installed card)
+                    let slotIns  = slotSimplifiedPorts(instance: instance, comp: comp, side: "in")
+                    let slotOuts = slotSimplifiedPorts(instance: instance, comp: comp, side: "out")
+                    let slotInPorts  = slotIns.map  { VisualPort(label: $0.label, signalType: $0.signalType, bundleStyle: $0.bundleStyle) }
+                    let slotOutPorts = slotOuts.map { VisualPort(label: $0.label, signalType: $0.signalType, bundleStyle: $0.bundleStyle) }
+                    inputPorts  = baseInputPorts  + slotInPorts
+                    outputPorts = baseOutputPorts + slotOutPorts
+                    inputPortIndexes  = Array(0..<baseInputPorts.count)  + slotIns.map(\.portIndex)
+                    outputPortIndexes = Array(0..<baseOutputPorts.count) + slotOuts.map(\.portIndex)
+                } else {
+                    let ins  = makeVisualPorts(labels: effectivePorts.inputs,  signalTypes: instance.effectiveInputTypes  ?? comp.inputs)
+                    let outs = makeVisualPorts(labels: effectivePorts.outputs, signalTypes: instance.effectiveOutputTypes ?? comp.outputs)
+                    inputPorts  = ins
+                    outputPorts = outs
+                    inputPortIndexes  = Array(0..<ins.count)
+                    outputPortIndexes = Array(0..<outs.count)
+                }
 
                 let rowCount = max(inputPorts.count, outputPorts.count)
 
-                ForEach(Array(inputPorts.enumerated()), id: \.offset) {
-                    idx,
-                    port in
+                ForEach(Array(inputPorts.enumerated()), id: \.offset) { idx, port in
                     PortEdgeDot(
                         instance: instance,
-                        portIndex: idx,
+                        portIndex: inputPortIndexes[idx],
                         side: "in",
                         total: inputPorts.count,
                         label: port.label,
@@ -511,12 +590,10 @@ struct StandardNodeView: View {
                     )
                 }
 
-                ForEach(Array(outputPorts.enumerated()), id: \.offset) {
-                    idx,
-                    port in
+                ForEach(Array(outputPorts.enumerated()), id: \.offset) { idx, port in
                     PortEdgeDot(
                         instance: instance,
-                        portIndex: idx,
+                        portIndex: outputPortIndexes[idx],
                         side: "out",
                         total: outputPorts.count,
                         label: port.label,
@@ -890,12 +967,12 @@ struct RackGroupedPortDot: View {
         .contentShape(Rectangle())
         .background(
             GeometryReader { geo in
-                Color.clear.preference(
+                let center = geo.frame(in: .named("canvas")).center
+                // Report with the first available port index so portCenter() can look it up.
+                let firstIdx = availableIndexes.first ?? displayPort.portIndexes.first ?? 0
+                return Color.clear.preference(
                     key: PortAnchorPref.self,
-                    value: [
-                        "\(instance.id)-\(displayPort.side)-group-\(displayPort.signalType)":
-                            geo.frame(in: .named("canvas")).center
-                    ]
+                    value: ["\(instance.id)-\(displayPort.side)-\(firstIdx)": center]
                 )
             }
         )
@@ -918,23 +995,18 @@ struct RackGroupedPortDot: View {
     private func handleTap() {
         guard !availableIndexes.isEmpty else { return }
 
-        if displayPort.side == "out" {
+        let treatAsOut = displayPort.side == "out" || (!isConnecting && displayPort.isBidirectional)
+        let treatAsIn  = displayPort.side == "in"  || (isConnecting  && displayPort.isBidirectional)
+
+        if treatAsOut && !isConnecting {
             if availableIndexes.count == 1 {
-                appState.startConnecting(
-                    fromId: instance.id,
-                    fromPortIndex: availableIndexes[0]
-                )
+                appState.startConnecting(fromId: instance.id, fromPortIndex: availableIndexes[0])
             } else {
                 showingPicker = true
             }
-        } else {
-            guard isConnecting else { return }
-
+        } else if treatAsIn && isConnecting {
             if availableIndexes.count == 1 {
-                appState.finishConnecting(
-                    toId: instance.id,
-                    toPortIndex: availableIndexes[0]
-                )
+                appState.finishConnecting(toId: instance.id, toPortIndex: availableIndexes[0])
             } else {
                 showingPicker = true
             }
@@ -1341,7 +1413,7 @@ struct SlotCardsSection: View {
             }
         }
         .sheet(isPresented: Binding(get: { pickingSlot != nil }, set: { if !$0 { pickingSlot = nil } })) {
-            SlotCardPickerSheet(slotIndex: pickingSlot ?? 0) { cardType in
+            SlotCardPickerSheet(slotIndex: pickingSlot ?? 0, hostComp: comp) { cardType in
                 if let slot = pickingSlot {
                     instance.slotCards[slot] = SlotCard(slotNumber: slot, cardType: cardType)
                 }
@@ -1426,13 +1498,16 @@ private struct SlotRow: View {
     }
 }
 
-private struct SlotCardPickerSheet: View {
+struct SlotCardPickerSheet: View {
     let slotIndex: Int
+    let hostComp: Component
     let onSelect: (String) -> Void
     @Environment(\.dismiss) private var dismiss
 
     private var cards: [Component] {
-        Components.list.filter { $0.isSlotCard }
+        let all = Components.list.filter { $0.isSlotCard }
+        if hostComp.compatibleCardIds.isEmpty { return all }
+        return all.filter { hostComp.compatibleCardIds.contains($0.id) }
     }
 
     var body: some View {
@@ -1440,32 +1515,44 @@ private struct SlotCardPickerSheet: View {
             Text("Choose card for Slot \(slotIndex + 1)")
                 .font(.system(size: 15, weight: .semibold))
 
-            ForEach(cards, id: \.id) { card in
-                Button {
-                    onSelect(card.id)
-                    dismiss()
-                } label: {
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.categoryColor(card.category))
-                            .frame(width: 6, height: 36)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(card.name)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.primary)
-                            Text(card.desc)
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+            if cards.isEmpty {
+                Text("No compatible cards found for this device.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 8)
+            } else {
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(cards, id: \.id) { card in
+                            Button {
+                                onSelect(card.id)
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.categoryColor(card.category))
+                                        .frame(width: 6, height: 36)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(card.name)
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(.primary)
+                                        Text(card.desc)
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color(nsColor: .controlBackgroundColor))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
                         }
-                        Spacer()
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(nsColor: .controlBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.08), lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .frame(maxHeight: 400)
             }
 
             Button("Cancel") { dismiss() }

@@ -23,7 +23,7 @@ struct InspectorView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxHeight: .infinity)
         .overlay(alignment: .leading) {
             Divider()
         }
@@ -82,6 +82,9 @@ struct FreePanelView: View {
                     }
                 }
             }
+
+            // Signal Path Checker
+            SignalPathCheckerSection()
         }
         .padding(.bottom, 12)
     }
@@ -95,6 +98,65 @@ struct FreePanelView: View {
                 .frame(width: 14, alignment: .trailing)
             Text(text)
                 .font(.system(size: 11))
+        }
+    }
+}
+
+// MARK: - Signal Path Checker Section
+struct SignalPathCheckerSection: View {
+    @EnvironmentObject var appState: AppState
+    @State private var issues: [String] = []
+    @State private var hasChecked = false
+
+    var body: some View {
+        InspectorSection(title: "SIGNAL PATH CHECK") {
+            VStack(alignment: .leading, spacing: 8) {
+                Button {
+                    issues = appState.signalPathIssues()
+                    hasChecked = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.shield")
+                            .font(.system(size: 11))
+                        Text("Run Check")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(Color.blue.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 7))
+                    .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color.blue.opacity(0.25), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+
+                if hasChecked {
+                    if issues.isEmpty {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 12))
+                            Text("No issues found")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(issues, id: \.self) { issue in
+                                HStack(alignment: .top, spacing: 5) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                        .font(.system(size: 10))
+                                        .padding(.top, 1)
+                                    Text(issue)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.primary.opacity(0.8))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

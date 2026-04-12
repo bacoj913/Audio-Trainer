@@ -28,6 +28,10 @@ struct PortGroup {
         case bindingPost
     }
 
+    /// True when this port carries a bidirectional signal (e.g. network Ethernet, speaker loop-through).
+    /// Bidirectional ports can both start AND complete a connection regardless of which side they are on.
+    let isBidirectional: Bool
+
     init(
         connector: String,
         count: Int,
@@ -35,7 +39,8 @@ struct PortGroup {
         channelsPerPort: Int? = nil,
         transport: String? = nil,
         isNetwork: Bool? = nil,
-        bundleStyle: BundleStyle? = nil
+        bundleStyle: BundleStyle? = nil,
+        isBidirectional: Bool? = nil
     ) {
         let normalized = signalType
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -51,6 +56,7 @@ struct PortGroup {
             self.transport = transport ?? "AES"
             self.isNetwork = isNetwork ?? false
             self.bundleStyle = bundleStyle ?? .stereoPair
+            self.isBidirectional = isBidirectional ?? false
 
         case "dante", "aes67", "milan", "avb", "networkaudio":
             self.channelsPerPort = channelsPerPort ?? 64
@@ -65,24 +71,28 @@ struct PortGroup {
             }()
             self.isNetwork = isNetwork ?? true
             self.bundleStyle = bundleStyle ?? .network
+            self.isBidirectional = isBidirectional ?? true   // network ports are bidirectional
 
         case "madi":
             self.channelsPerPort = channelsPerPort ?? 64
             self.transport = transport ?? "MADI"
             self.isNetwork = isNetwork ?? false
             self.bundleStyle = bundleStyle ?? .multichannel
+            self.isBidirectional = isBidirectional ?? false
 
         case "bindingpost":
             self.channelsPerPort = channelsPerPort ?? 1
             self.transport = transport
             self.isNetwork = isNetwork ?? false
             self.bundleStyle = bundleStyle ?? .bindingPost
+            self.isBidirectional = isBidirectional ?? false
 
         default:
             self.channelsPerPort = channelsPerPort ?? 1
             self.transport = transport
             self.isNetwork = isNetwork ?? false
             self.bundleStyle = bundleStyle ?? .single
+            self.isBidirectional = isBidirectional ?? false
         }
     }
 
@@ -154,6 +164,7 @@ extension Component {
         availablePresets: [String] = [],
         slotCount: Int = 0,
         isSlotCard: Bool = false,
+        compatibleCardIds: [String] = [],
         presetBananaOrientations: [String: String] = [:]
     ) {
         self.init(
@@ -174,6 +185,7 @@ extension Component {
             availablePresets: availablePresets,
             slotCount: slotCount,
             isSlotCard: isSlotCard,
+            compatibleCardIds: compatibleCardIds,
             presetBananaOrientations: presetBananaOrientations
         )
     }
@@ -211,6 +223,9 @@ struct Component {
     var availablePresets: [String] = []   // e.g. Lake module names for amps/processors
     var slotCount: Int = 0                // number of expansion card slots (0 = none)
     var isSlotCard: Bool = false          // true when this component IS an expansion card
+    /// If non-empty, only cards whose id appears in this list can be inserted into this device's slots.
+    /// Empty = accept any card marked isSlotCard.
+    var compatibleCardIds: [String] = []
     /// Per-preset expected banana ground tab direction for binding post outputs.
     /// Keys are preset names; values are "left" or "right".
     /// Only relevant for amps with .bindingPost output ports.
@@ -233,10 +248,11 @@ struct Component {
 
 // MARK: - Category Order
 let categoryOrder: [String] = [
-    "Sources", "Processing", "Patching", "Consoles",
-    "Amplifiers", "Wireless Mics", "Wireless IEMs", "Antennas",
-    "Networking", "Stage Racks", "Stage Boxes", "Racks", "Speakers", "Power", "Intercom",
-    "Expansion Cards"
+    "Sources", "Consoles", "Processing", "Patching",
+    "Stage Boxes", "Stage Racks", "Networking",
+    "Amplifiers", "Speakers",
+    "Wireless Mics", "Wireless IEMs", "Antennas",
+    "Intercom", "Power", "Racks", "Expansion Cards"
 ]
 
 // MARK: - Signal type colors (for port dots and connection wires)

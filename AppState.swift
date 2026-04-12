@@ -29,11 +29,46 @@ class IntercomState: ObservableObject {
 }
 
 // MARK: - Configurable I/O
-struct IOConfig: Equatable {
-    var inputCount: Int = 8
-    var inputSignalType: String = "line"
-    var outputCount: Int = 8
-    var outputSignalType: String = "line"
+struct IOPortGroup: Equatable, Codable {
+    var count: Int = 8
+    var signalType: String = "line"
+    var labelPrefix: String = ""   // optional override; empty = use signal type name
+
+    var resolvedPrefix: String {
+        labelPrefix.isEmpty ? signalType.capitalized : labelPrefix
+    }
+}
+
+struct IOConfig: Equatable, Codable {
+    var inputGroups: [IOPortGroup] = [IOPortGroup(count: 8, signalType: "line")]
+    var outputGroups: [IOPortGroup] = [IOPortGroup(count: 8, signalType: "line")]
+
+    var totalInputCount: Int { inputGroups.reduce(0) { $0 + $1.count } }
+    var totalOutputCount: Int { outputGroups.reduce(0) { $0 + $1.count } }
+
+    func inputLabels() -> [String] {
+        var labels: [String] = []
+        for grp in inputGroups {
+            for i in 1...max(1, grp.count) { labels.append("\(grp.resolvedPrefix) In \(i)") }
+        }
+        return labels
+    }
+
+    func outputLabels() -> [String] {
+        var labels: [String] = []
+        for grp in outputGroups {
+            for i in 1...max(1, grp.count) { labels.append("\(grp.resolvedPrefix) Out \(i)") }
+        }
+        return labels
+    }
+
+    func inputSignalTypes() -> [String] {
+        inputGroups.flatMap { grp in Array(repeating: grp.signalType, count: max(1, grp.count)) }
+    }
+
+    func outputSignalTypes() -> [String] {
+        outputGroups.flatMap { grp in Array(repeating: grp.signalType, count: max(1, grp.count)) }
+    }
 }
 
 // MARK: - Dante Flow
@@ -81,24 +116,18 @@ class NodeInstance: ObservableObject, Identifiable {
 
     var effectivePorts: PortInfo? {
         if let cfg = ioConfig {
-            let inLabels  = (1...max(1, cfg.inputCount)).map  { "\(cfg.inputSignalType.capitalized) In \($0)" }
-            let outLabels = (1...max(1, cfg.outputCount)).map { "\(cfg.outputSignalType.capitalized) Out \($0)" }
-            return PortInfo(inputs: inLabels, outputs: outLabels)
+            return PortInfo(inputs: cfg.inputLabels(), outputs: cfg.outputLabels())
         }
         return slotCardMergedPorts()
     }
 
     var effectiveInputTypes: [String]? {
-        if let cfg = ioConfig {
-            return Array(repeating: cfg.inputSignalType, count: cfg.inputCount)
-        }
+        if let cfg = ioConfig { return cfg.inputSignalTypes() }
         return slotCardMergedInputTypes()
     }
 
     var effectiveOutputTypes: [String]? {
-        if let cfg = ioConfig {
-            return Array(repeating: cfg.outputSignalType, count: cfg.outputCount)
-        }
+        if let cfg = ioConfig { return cfg.outputSignalTypes() }
         return slotCardMergedOutputTypes()
     }
 
@@ -469,6 +498,75 @@ class AppState: ObservableObject {
             ($0.toId   == id && $0.toPortIndex   >= inputCount) ||
             ($0.fromId == id && $0.fromPortIndex >= outputCount)
         }
+        crossTabConnections.removeAll {
+            ($0.toId   == id && $0.toPortIndex   >= inputCount) ||
+            ($0.fromId == id && $0.fromPortIndex >= outputCount)
+        }
+    }
+
+    // MARK: - Signal Path Checker
+
+    /// Walk the connection graph on the active tab and report issues.
+    func signalPathIssues() -> [String] {
+        var issues: [String] = []
+        let conns = activeTab.connections
+        let insts = activeTab.instances
+
+        // Build a set of instance IDs that receive at least one connection
+        let receiverIds = Set(conns.map { $0.toId })
+        // Build a set of instance IDs that send at least one connection
+        let senderIds = Set(conns.map { $0.fromId })
+
+        for inst in insts {
+            guard let comp = Components.all[inst.type], !comp.comingSoon else { continue }
+            let effectiveOutputs = inst.effectiveOutputTypes ?? comp.outputs
+            let effectiveInputs  = inst.effectiveInputTypes  ?? comp.inputs
+
+            // Unconnected outputs (non-rack instances only)
+            if !effectiveOutputs.isEmpty && !senderIds.contains(inst.id) {
+                issues.append("\(comp.name): has outputs but nothing is connected")
+            }
+            // Unconnected inputs
+            if !effectiveInputs.isEmpty && !receiverIds.contains(inst.id) {
+                issues.append("\(comp.name): has inputs but nothing is feeding it")
+            }
+        }
+
+        // Type mismatch check
+        for conn in conns {
+            guard let fromInst = insts.first(where: { $0.id == conn.fromId }),
+                  let toInst   = insts.first(where: { $0.id == conn.toId }),
+                  let fromComp = Components.all[fromInst.type],
+                  let toComp   = Components.all[toInst.type] else { continue }
+
+            let fromTypes = fromInst.effectiveOutputTypes ?? fromComp.outputs
+            let toTypes   = toInst.effectiveInputTypes   ?? toComp.inputs
+
+            guard conn.fromPortIndex < fromTypes.count,
+                  conn.toPortIndex   < toTypes.count else { continue }
+
+            let fromSig = fromTypes[conn.fromPortIndex].lowercased()
+            let toSig   = toTypes[conn.toPortIndex].lowercased()
+
+            // Group compatible signal families
+            let networkFamily: Set<String> = ["dante","milan","aes67","avb","network","networkaudio"]
+            let analogFamily:  Set<String> = ["mic","line","instrument"]
+            let speakerFamily: Set<String> = ["speaker","bindingpost"]
+            let digitalFamily: Set<String> = ["aes","aes3","madi","fiber","optical"]
+
+            func family(_ s: String) -> String {
+                if networkFamily.contains(s) { return "network" }
+                if analogFamily.contains(s)  { return "analog"  }
+                if speakerFamily.contains(s) { return "speaker" }
+                if digitalFamily.contains(s) { return "digital" }
+                return s
+            }
+
+            if family(fromSig) != family(toSig) {
+                issues.append("Type mismatch: \(fromComp.name) (\(fromSig)) → \(toComp.name) (\(toSig))")
+            }
+        }
+        return issues
     }
 
     // MARK: - Exercises
@@ -593,12 +691,7 @@ class AppState: ObservableObject {
                         positionX: Double(inst.position.x),
                         positionY: Double(inst.position.y),
                         rackSlot: inst.rackSlot,
-                        ioConfig: inst.ioConfig.map {
-                            SavedIOConfig(inputCount: $0.inputCount,
-                                          inputSignalType: $0.inputSignalType,
-                                          outputCount: $0.outputCount,
-                                          outputSignalType: $0.outputSignalType)
-                        },
+                        ioConfig: inst.ioConfig.map { SavedIOConfig(ioConfig: $0) },
                         ipAddress: inst.ipAddress,
                         portVlanTags: inst.portVlanTags.isEmpty ? nil : inst.portVlanTags,
                         selectedPreset: inst.selectedPreset,
@@ -636,12 +729,7 @@ class AppState: ObservableObject {
                 let inst = NodeInstance(id: si.id, type: si.type,
                                         position: CGPoint(x: si.positionX, y: si.positionY))
                 inst.rackSlot = si.rackSlot
-                if let cfg = si.ioConfig {
-                    inst.ioConfig = IOConfig(inputCount: cfg.inputCount,
-                                             inputSignalType: cfg.inputSignalType,
-                                             outputCount: cfg.outputCount,
-                                             outputSignalType: cfg.outputSignalType)
-                }
+                if let cfg = si.ioConfig { inst.ioConfig = cfg.toIOConfig() }
                 inst.ipAddress = si.ipAddress
                 if let tags = si.portVlanTags { inst.portVlanTags = tags }
                 inst.selectedPreset = si.selectedPreset
@@ -745,10 +833,7 @@ class AppState: ObservableObject {
             instances: rackTab.instances.map { ri in
                 SavedInstance(id: UUID(), type: ri.type,
                               positionX: Double(ri.position.x), positionY: Double(ri.position.y),
-                              rackSlot: ri.rackSlot, ioConfig: ri.ioConfig.map {
-                                  SavedIOConfig(inputCount: $0.inputCount, inputSignalType: $0.inputSignalType,
-                                                outputCount: $0.outputCount, outputSignalType: $0.outputSignalType)
-                              })
+                              rackSlot: ri.rackSlot, ioConfig: ri.ioConfig.map { SavedIOConfig(ioConfig: $0) })
             },
             connections: rackTab.connections.map {
                 SavedConnection(id: UUID(), fromId: $0.fromId, fromPortIndex: $0.fromPortIndex,
@@ -775,10 +860,7 @@ class AppState: ObservableObject {
             let inst = NodeInstance(id: newId, type: si.type,
                                     position: CGPoint(x: si.positionX, y: si.positionY))
             inst.rackSlot = si.rackSlot
-            if let cfg = si.ioConfig {
-                inst.ioConfig = IOConfig(inputCount: cfg.inputCount, inputSignalType: cfg.inputSignalType,
-                                         outputCount: cfg.outputCount, outputSignalType: cfg.outputSignalType)
-            }
+            if let cfg = si.ioConfig { inst.ioConfig = cfg.toIOConfig() }
             inst.ipAddress = si.ipAddress
             if let tags = si.portVlanTags { inst.portVlanTags = tags }
             inst.selectedPreset = si.selectedPreset
