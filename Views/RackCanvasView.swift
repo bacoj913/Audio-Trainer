@@ -761,7 +761,9 @@ struct RackCanvasFacePort: View {
                 }
                 return
             }
-            if side == "out" {
+            // Network ports are bidirectional: "in" can start a connection when not already connecting.
+            let treatAsOut = side == "out" || (isNetworkSwitch && !isConnecting)
+            if treatAsOut {
                 if !isConnecting {
                     appState.startConnecting(fromId: instance.id, fromPortIndex: portIndex)
                 } else if isSource {

@@ -30,41 +30,66 @@ struct DanteControllerView: View {
         appState.allNetworkInstances
     }
 
+    private static let networkTypes: Set<String> = ["dante","milan","aes67","avb","network","networkaudio"]
+
+    /// Collects all network PortGroups for a device including slot cards.
+    private func networkPortGroups(inst: NodeInstance, comp: Component, side: String) -> [PortGroup] {
+        var groups: [PortGroup] = []
+        let baseGroups = side == "out" ? comp.outputPortGroups : comp.inputPortGroups
+        for g in baseGroups where Self.networkTypes.contains(g.signalType.lowercased()) {
+            groups.append(g)
+        }
+        for card in inst.slotCards.values.sorted(by: { $0.slotNumber < $1.slotNumber }) {
+            guard let cardComp = Components.all[card.cardType] else { continue }
+            let cardGroups = side == "out" ? cardComp.outputPortGroups : cardComp.inputPortGroups
+            for g in cardGroups where Self.networkTypes.contains(g.signalType.lowercased()) {
+                groups.append(g)
+            }
+        }
+        return groups
+    }
+
     private var txChannels: [DanteTXChannel] {
         allDevices.flatMap { item -> [DanteTXChannel] in
-            let ports  = item.inst.effectivePorts ?? item.comp.ports
-            let types  = item.inst.effectiveOutputTypes ?? item.comp.outputs
-            return zip(ports.outputs.indices, ports.outputs).compactMap { idx, label in
-                guard idx < types.count,
-                      ["dante","milan","aes67","avb","network"].contains(types[idx].lowercased())
-                else { return nil }
-                return DanteTXChannel(
-                    id: "\(item.inst.id)-out-\(idx)",
-                    device: item.inst,
-                    comp: item.comp,
-                    portIndex: idx,
-                    label: label
-                )
+            var result: [DanteTXChannel] = []
+            var chIdx = 0
+            for group in networkPortGroups(inst: item.inst, comp: item.comp, side: "out") {
+                let transport = group.transport ?? group.connector
+                let total = group.count * group.channelsPerPort
+                for ch in 0..<total {
+                    result.append(DanteTXChannel(
+                        id: "\(item.inst.id)-out-\(chIdx)",
+                        device: item.inst,
+                        comp: item.comp,
+                        portIndex: chIdx,
+                        label: "\(transport) \(ch + 1)"
+                    ))
+                    chIdx += 1
+                }
             }
+            return result
         }
     }
 
     private var rxChannels: [DanteRXChannel] {
         allDevices.flatMap { item -> [DanteRXChannel] in
-            let ports  = item.inst.effectivePorts ?? item.comp.ports
-            let types  = item.inst.effectiveInputTypes ?? item.comp.inputs
-            return zip(ports.inputs.indices, ports.inputs).compactMap { idx, label in
-                guard idx < types.count,
-                      ["dante","milan","aes67","avb","network"].contains(types[idx].lowercased())
-                else { return nil }
-                return DanteRXChannel(
-                    id: "\(item.inst.id)-in-\(idx)",
-                    device: item.inst,
-                    comp: item.comp,
-                    portIndex: idx,
-                    label: label
-                )
+            var result: [DanteRXChannel] = []
+            var chIdx = 0
+            for group in networkPortGroups(inst: item.inst, comp: item.comp, side: "in") {
+                let transport = group.transport ?? group.connector
+                let total = group.count * group.channelsPerPort
+                for ch in 0..<total {
+                    result.append(DanteRXChannel(
+                        id: "\(item.inst.id)-in-\(chIdx)",
+                        device: item.inst,
+                        comp: item.comp,
+                        portIndex: chIdx,
+                        label: "\(transport) \(ch + 1)"
+                    ))
+                    chIdx += 1
+                }
             }
+            return result
         }
     }
 

@@ -188,6 +188,8 @@ extension Component {
             compatibleCardIds: compatibleCardIds,
             presetBananaOrientations: presetBananaOrientations
         )
+        self.inputPortGroups = inputGroups
+        self.outputPortGroups = outputGroups
     }
 }
 // MARK: - Slot Card
@@ -230,6 +232,9 @@ struct Component {
     /// Keys are preset names; values are "left" or "right".
     /// Only relevant for amps with .bindingPost output ports.
     var presetBananaOrientations: [String: String] = [:]
+    /// Original port group descriptors — used by Dante matrix to expand virtual channels.
+    var inputPortGroups: [PortGroup] = []
+    var outputPortGroups: [PortGroup] = []
 
     /// True for any device that participates in a network (dante, milan, aes67, avb, or plain "network" signal type).
     var hasNetworkIP: Bool {
